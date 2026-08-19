@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#4f46e5" />
+<title>MasteryPath — Adaptive Learning</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --panel:#ffffff; --ink:#1f2540; --muted:#5b6480; --line:#e6e9f2;
+    --brand:#4f46e5; --brand-2:#6366f1; --brand-soft:#eef0ff;
+    --good:#0e9f6e; --good-soft:#e6f6ef; --bad:#e11d48; --bad-soft:#fdeaee;
+    --warn:#c2740c; --warn-soft:#fcf1e0; --star:#f5b301;
+    --l1:#38bdf8; --l2:#34d399; --l3:#a78bfa; --l4:#fb923c; --l5:#f43f5e;
+    --radius:18px; --shadow:0 6px 22px rgba(31,37,64,.08);
+    --font:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{font-family:var(--font);background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  .hidden{display:none!important}
+  .app{max-width:920px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+  .topbar{position:sticky;top:0;z-index:20;background:linear-gradient(120deg,var(--brand),var(--brand-2));color:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);flex-wrap:wrap}
+  .topbar .logo{font-weight:800;font-size:1.15rem;letter-spacing:.2px;display:flex;align-items:center;gap:8px}
+  .topbar .logo .mark{width:30px;height:30px;border-radius:9px;background:#fff;color:var(--brand);display:grid;place-items:center;font-weight:900}
+  .spacer{flex:1}
+  .who{display:flex;align-items:center;gap:8px;font-weight:600;font-size:.9rem}
+  .who .avatar{width:34px;height:34px;border-radius:50%;background:#fff;color:var(--brand);display:grid;place-items:center;font-weight:800}
+  .roleToggle{display:flex;background:rgba(255,255,255,.18);border-radius:999px;padding:3px}
+  .roleToggle button{padding:7px 14px;border-radius:999px;color:#fff;font-weight:700;font-size:.85rem;opacity:.8}
+  .roleToggle button.active{background:#fff;color:var(--brand);opacity:1}
+  .iconbtn{color:#fff;font-weight:700;font-size:.8rem;background:rgba(255,255,255,.18);padding:7px 12px;border-radius:999px}
+  main{flex:1;padding:18px}
+  .screen{animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  h1,h2,h3{margin:0 0 .5rem}
+  h1{font-size:1.5rem}
+  .sub{color:var(--muted);margin:0 0 18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:16px}
+  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  .topic{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);text-align:left;transition:transform .12s;position:relative}
+  .topic:active{transform:scale(.97)}
+  .topic .emoji{font-size:2rem}
+  .topic .tname{font-weight:800;margin:8px 0 4px;font-size:1.05rem}
+  .bar{height:10px;background:var(--line);border-radius:999px;overflow:hidden;margin-top:8px}
+  .bar > span{display:block;height:100%;border-radius:999px;background:var(--brand)}
+  .topic .meta{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);margin-top:6px}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:800}
+  .pill.lv{color:#fff}
+  .lvl-1{background:var(--l1)}.lvl-2{background:var(--l2)}.lvl-3{background:var(--l3)}.lvl-4{background:var(--l4)}.lvl-5{background:var(--l5)}
+  .st-mastered{background:var(--good-soft);color:var(--good)}
+  .st-proficient{background:var(--brand-soft);color:var(--brand)}
+  .st-developing,.st-learning{background:var(--warn-soft);color:var(--warn)}
+  .st-needsreview,.st-needspractice{background:var(--bad-soft);color:var(--bad)}
+  .st-notstarted{background:var(--line);color:var(--muted)}
+  .dec-promote{background:var(--good-soft);color:var(--good)}
+  .dec-reinforce{background:var(--brand-soft);color:var(--brand)}
+  .dec-remediate{background:var(--bad-soft);color:var(--bad)}
+  .dec-notstarted{background:var(--line);color:var(--muted)}
+  .quizhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;color:var(--muted);font-weight:700}
+  .progress{height:12px;background:var(--line);border-radius:999px;overflow:hidden;margin-bottom:18px}
+  .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand-2));transition:width .3s}
+  .qtext{font-size:1.5rem;font-weight:800;text-align:center;margin:10px 0 22px;min-height:2.2em;display:grid;place-items:center}
+  .options{display:grid;gap:14px;grid-template-columns:1fr 1fr}
+  @media(max-width:520px){.options{grid-template-columns:1fr}.qtext{font-size:1.3rem}}
+  .opt{background:var(--panel);border:2px solid var(--line);border-radius:var(--radius);padding:20px;font-size:1.35rem;font-weight:800;box-shadow:var(--shadow);transition:.12s;min-height:74px}
+  .opt:active{transform:scale(.97)}
+  .opt.correct{border-color:var(--good);background:var(--good-soft);color:var(--good)}
+  .opt.wrong{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+  .opt.dim{opacity:.5}
+  .feedback{margin-top:18px;border-radius:var(--radius);padding:16px 18px;font-weight:700;display:none}
+  .feedback.show{display:block;animation:pop .3s}
+  @keyframes pop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+  .feedback.ok{background:var(--good-soft);color:var(--good)}
+  .feedback.no{background:var(--bad-soft);color:var(--bad)}
+  .feedback .expl{color:var(--ink);font-weight:500;margin-top:6px}
+  .btn{background:var(--brand);color:#fff;font-weight:800;padding:14px 22px;border-radius:14px;font-size:1.05rem;box-shadow:var(--shadow);width:100%;margin-top:16px}
+  .btn.ghost{background:var(--panel);color:var(--brand);border:2px solid var(--brand-soft)}
+  .btn.sm{width:auto;padding:10px 16px;font-size:.9rem;margin-top:0}
+  .btn.gray{background:#eceef6;color:var(--ink)}
+  .btn:disabled{opacity:.6}
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap}
+  .back{background:none;color:var(--muted);font-weight:700;padding:6px 0;margin-bottom:6px;font-size:.9rem}
+  .celebrate{text-align:center;padding:14px}
+  .celebrate .big{font-size:3.4rem}
+  .stars{font-size:2rem;letter-spacing:6px;color:var(--star)}
+  .statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
+  .stat{background:var(--brand-soft);border-radius:14px;padding:12px;text-align:center}
+  .stat b{display:block;font-size:1.5rem}
+  .stat span{font-size:.75rem;color:var(--muted);font-weight:700}
+  .badges{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+  .badge{background:var(--warn-soft);border-radius:14px;padding:8px 12px;font-weight:800;font-size:.85rem;color:var(--warn)}
+  table{width:100%;border-collapse:collapse;font-size:.9rem}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.4px}
+  td.num,th.num{text-align:right}
+  .minibar{height:8px;background:var(--line);border-radius:999px;overflow:hidden;min-width:70px}
+  .minibar>span{display:block;height:100%;border-radius:999px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+  .tabs button{padding:9px 15px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-weight:700;color:var(--muted)}
+  .tabs button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .subjchips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .subjchips button{padding:8px 14px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-weight:700;color:var(--muted);font-size:.85rem}
+  .subjchips button.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+  .kpi b{display:block;font-size:1.6rem}
+  .kpi span{font-size:.75rem;color:var(--muted);font-weight:700}
+  .muted{color:var(--muted)}
+  label{font-weight:700;font-size:.85rem;display:block;margin-bottom:6px}
+  select,input[type=number],input[type=password],input[type=email],input[type=text],textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:12px;font-family:inherit;font-size:1rem;background:#fbfcff}
+  textarea{min-height:120px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.8rem}
+  .field{margin-bottom:14px}
+  .note{font-size:.8rem;color:var(--muted);margin-top:4px}
+  .valid-ok{color:var(--good);font-weight:700}
+  .valid-bad{color:var(--bad);font-weight:700}
+  .errlist{background:var(--bad-soft);border-radius:12px;padding:10px 14px;font-size:.82rem;color:var(--bad);margin-top:10px}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:999px;font-weight:700;box-shadow:var(--shadow);z-index:50;opacity:0;transition:.3s;pointer-events:none;max-width:90%;text-align:center}
+  .toast.show{opacity:1}
+  .lockwrap{max-width:380px;margin:40px auto;text-align:center}
+  .flex{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .between{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .chip{background:var(--brand-soft);color:var(--brand);border-radius:999px;padding:5px 12px;font-weight:700;font-size:.8rem}
+  .chip.live{background:var(--good-soft);color:var(--good)}
+  .empty{text-align:center;color:var(--muted);padding:30px 10px}
+  footer{padding:16px;text-align:center;color:var(--muted);font-size:.75rem}
+  .auth-tabs{display:flex;gap:8px;margin-bottom:16px;justify-content:center}
+  .auth-tabs button{flex:1;padding:10px;border-radius:12px;background:#eef0ff;color:var(--brand);font-weight:800}
+  .auth-tabs button.active{background:var(--brand);color:#fff}
+  code{background:#eef0ff;padding:2px 6px;border-radius:6px;font-size:.82em}
+  pre{background:#0f1424;color:#e8ecff;padding:14px;border-radius:12px;overflow:auto;font-size:.8rem}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar" id="topbar">
+    <div class="logo"><span class="mark">✦</span> MasteryPath</div>
+    <div class="spacer"></div>
+    <div id="topbarRight"></div>
+  </header>
+  <main id="main"></main>
+  <footer>MasteryPath · adaptive mastery across subjects · your data is private to your account</footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============================================================================
+   MasteryPath — subject-agnostic adaptive mastery platform
+   Hierarchy: Learner → Subject → Topic → Skill → Difficulty → Question → Attempt
+   Cloud-backed (Supabase); the mastery engine is pure and subject-neutral.
+   ============================================================================ */
+
+/* ⚙️ CONFIG (already filled in for your project) */
+const SUPABASE_URL      = "https://aiboyflcbuyyowlxfvmd.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_gzVX1DbInTeZQoHLfekzIA_ZgRFXi3J";
+
+const CONFIGURED = /^https:\/\/[a-z0-9-]+\.supabase\.co/i.test(SUPABASE_URL) && SUPABASE_ANON_KEY.length > 20;
+let SB = null;
+if (CONFIGURED) { SB = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); }
+
+const CONFIG = {
+  promote:{window:10, accuracy:0.80}, regress:{window:8, accuracy:0.60},
+  mastery:{minLevel:4, minScore:85, minAccuracy:85},
+  weights:{accuracy:0.50, difficulty:0.20, consistency:0.15, retention:0.10, confidence:0.05},
+  recentWindow:10, noRepeatWithin:20, fastAnswerMs:12000, minAttempts:8,
+  reviewIntervalsDays:{high:14, mid:7, low:4, min:2},
+};
+const LEVEL_NAMES = {1:'Foundation',2:'Basic',3:'Intermediate',4:'Advanced',5:'Challenge'};
+
+/* Subjects */
+const SUBJECT_EMOJI = {'Mathematics':'🔢','English':'📖','Science':'🔬','French':'🇫🇷','Reasoning':'🧩'};
+const SUBJECT_ORDER = ['Mathematics','English','Science','French','Reasoning'];
+function subjectEmoji(n){ return SUBJECT_EMOJI[n] || '📚'; }
+
+/* Topic emojis (used where known; default otherwise) */
+const EMOJI = {'Addition':'➕','Subtraction':'➖','Multiplication':'✖️','Division':'➗','Fractions':'🍕','Decimals':'🔢','Geometry':'📐','Word Problems':'📖','Measurement':'📏','Grammar':'✏️','Vocabulary':'📚','Reading Comprehension':'📖','Spelling':'🔤','Biology':'🌱','Physics':'⚡','Chemistry':'⚗️'};
+function emojiFor(n){ return EMOJI[n] || '📘'; }
+const PREFERRED = ['Addition','Subtraction','Multiplication','Division','Fractions','Decimals','Geometry','Measurement','Word Problems'];
+function jsq(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+/* Small starter sample spanning subjects (only used by the seed button). */
+const SAMPLE_SEED = [
+  ['Mathematics','Addition','Adding whole numbers',1,'What is 6 + 7?','12','13','14','11','B','6 + 7 = 13.'],
+  ['Mathematics','Addition','Adding whole numbers',2,'What is 24 + 18?','42','40','32','44','A','24 + 18 = 42.'],
+  ['Mathematics','Fractions','Comparing fractions',1,'Which is greater: 1/2 or 1/4?','1/2','1/4','Equal','Cannot tell','A','1/2 is bigger than 1/4.'],
+  ['Mathematics','Geometry','Shapes and measures',1,'How many sides does a triangle have?','3','4','5','6','A','A triangle has 3 sides.'],
+  ['English','Grammar','Nouns',1,'Which word is a noun?','quickly','dog','run','blue','B','A noun names a person, place or thing — "dog".'],
+  ['English','Grammar','Verbs',2,'Which word is a verb?','happy','table','jump','soft','C','A verb is an action — "jump".'],
+  ['English','Vocabulary','Synonyms',2,'Which word means the same as "big"?','tiny','large','thin','cold','B','"Large" means the same as "big".'],
+  ['Science','Biology','Living things',1,'Which of these is a living thing?','Rock','Tree','Cup','Chair','B','A tree grows and is alive.'],
+  ['Science','Physics','Forces',2,'What makes things fall to the ground?','Wind','Gravity','Light','Sound','B','Gravity pulls objects down.'],
+  ['Science','Biology','The human body',1,'Which organ pumps blood?','Lungs','Heart','Brain','Skin','B','The heart pumps blood around the body.'],
+];
+
+/* ---------- State ---------- */
+let STATE = {
+  user:null,
+  questions:[], attempts:[], sessions:[],
+  students:[{id:'ada', name:'Learner', avatar:'L'}],
+  activeStudentId:'ada',
+  reviews:{}, assignments:{},
+  settings:{ questionsPerSession:10, parentPin:'1234' },
+  role:'child', parentUnlocked:false, live:false,
+  currentSubject:null,  // child's chosen subject
+  parentSubject:null,   // parent's selected subject
+};
+function loadLocal(){ try{ return JSON.parse(localStorage.getItem('mm_local'))||{}; }catch(e){ return {}; } }
+function saveLocal(){ localStorage.setItem('mm_local', JSON.stringify({role:STATE.role, currentSubject:STATE.currentSubject})); }
+
+function bank(){ return STATE.questions; }
+function approvedBank(){ return STATE.questions.filter(q=>q.status==='approved'); }
+
+function activeSubjects(){
+  const c={}; approvedBank().forEach(q=>{ c[q.subject]=(c[q.subject]||0)+1; });
+  const names=Object.keys(c);
+  names.sort((a,b)=>{ const ia=SUBJECT_ORDER.indexOf(a), ib=SUBJECT_ORDER.indexOf(b);
+    return (ia<0?99:ia)-(ib<0?99:ib) || a.localeCompare(b); });
+  return names.map(n=>({name:n, emoji:subjectEmoji(n), count:c[n]}));
+}
+function activeTopics(subject){
+  const c={}; approvedBank().forEach(q=>{ if(q.subject===subject) c[q.topic]=(c[q.topic]||0)+1; });
+  const names=Object.keys(c);
+  names.sort((a,b)=>{ const ia=PREFERRED.indexOf(a), ib=PREFERRED.indexOf(b);
+    return (ia<0?99:ia)-(ib<0?99:ib) || a.localeCompare(b); });
+  return names.map(n=>({name:n, emoji:emojiFor(n)}));
+}
+
+/* ---------- Data layer ---------- */
+function mapQuestion(r){ return { question_id:r.id, subject:r.subject, topic:r.topic, skill:r.skill, difficulty:r.difficulty,
+  question_text:r.question_text, option_a:r.option_a, option_b:r.option_b, option_c:r.option_c, option_d:r.option_d,
+  correct_answer:r.correct_answer, explanation:r.explanation, status:r.status }; }
+function mapAttempt(r){ return { id:r.id, studentId:r.student_id, sessionId:r.session_id, subject:r.subject, questionId:r.question_id,
+  topic:r.topic, skill:r.skill, difficulty:r.difficulty, selected:r.selected, correct:r.correct, responseMs:r.response_ms, at:new Date(r.at).getTime() }; }
+function mapSession(r){ return { id:r.id, studentId:r.student_id, subject:r.subject, topic:r.topic, type:r.type,
+  startedAt:r.started_at?new Date(r.started_at).getTime():0, completedAt:r.completed_at?new Date(r.completed_at).getTime():0, correct:r.correct, total:r.total }; }
+
+async function loadAll(){
+  const uid=STATE.user.id;
+  const [q,a,s,cfg]=await Promise.all([
+    SB.from('questions').select('*').order('created_at',{ascending:true}),
+    SB.from('attempts').select('*').order('at',{ascending:true}),
+    SB.from('sessions').select('*').order('started_at',{ascending:true}),
+    SB.from('app_settings').select('data').eq('owner',uid).maybeSingle(),
+  ]);
+  if(q.error||a.error||s.error){ toast('Load error: '+((q.error||a.error||s.error).message)); }
+  STATE.questions=(q.data||[]).map(mapQuestion);
+  STATE.attempts=(a.data||[]).map(mapAttempt);
+  STATE.sessions=(s.data||[]).map(mapSession);
+  const blob=cfg.data&&cfg.data.data?cfg.data.data:null;
+  if(blob){
+    STATE.students=blob.students||STATE.students;
+    STATE.activeStudentId=blob.activeStudentId||'ada';
+    STATE.reviews=blob.reviews||{};
+    STATE.assignments=blob.assignments||{};
+    STATE.settings=Object.assign({questionsPerSession:10,parentPin:'1234'}, blob.settings||{});
+  } else { await saveSettings(); }
+}
+let _saveTimer=null;
+function save(){ clearTimeout(_saveTimer); _saveTimer=setTimeout(()=>saveSettings(),250); }
+async function saveSettings(){
+  if(!SB||!STATE.user) return;
+  const {error}=await SB.from('app_settings').upsert({ owner:STATE.user.id,
+    data:{ students:STATE.students, activeStudentId:STATE.activeStudentId, reviews:STATE.reviews, assignments:STATE.assignments, settings:STATE.settings },
+    updated_at:new Date().toISOString() });
+  if(error) toast('Save error: '+error.message);
+}
+async function dbInsertAttempt(a){
+  const {error}=await SB.from('attempts').insert({ id:a.id, owner:STATE.user.id, student_id:a.studentId, session_id:a.sessionId,
+    subject:a.subject, question_id:a.questionId, topic:a.topic, skill:a.skill, difficulty:a.difficulty, selected:a.selected,
+    correct:a.correct, response_ms:a.responseMs, at:new Date(a.at).toISOString() });
+  if(error) toast('Could not save answer: '+error.message);
+}
+async function dbInsertSession(s){
+  const {error}=await SB.from('sessions').insert({ id:s.id, owner:STATE.user.id, student_id:s.studentId, subject:s.subject,
+    topic:s.topic, type:s.type, started_at:new Date(s.startedAt).toISOString(), completed_at:new Date(s.completedAt).toISOString(),
+    correct:s.correct, total:s.total });
+  if(error) toast('Could not save session: '+error.message);
+}
+async function dbDeleteTopic(subject,topic){
+  const uid=STATE.user.id;
+  await SB.from('questions').delete().eq('owner',uid).eq('subject',subject).eq('topic',topic);
+  await SB.from('attempts').delete().eq('owner',uid).eq('subject',subject).eq('topic',topic);
+  await SB.from('sessions').delete().eq('owner',uid).eq('subject',subject).eq('topic',topic);
+}
+
+let RT_CHANNEL=null;
+function stopRealtime(){ try{ if(RT_CHANNEL){ SB.removeChannel(RT_CHANNEL); } }catch(e){} RT_CHANNEL=null; STATE.live=false; }
+function startRealtime(){
+  // Live updates are a nice-to-have; never let them block the app.
+  try{
+    if(!SB||!STATE.user) return;
+    if(RT_CHANNEL) return;                 // already connected — don't double-subscribe
+    const uid=STATE.user.id;
+    const ch=SB.channel('mm_'+uid+'_'+Date.now())
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'attempts',filter:'owner=eq.'+uid}, p=>{
+         const a=mapAttempt(p.new); if(!STATE.attempts.some(x=>x.id===a.id)){ STATE.attempts.push(a); onRemoteChange(); }})
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'sessions',filter:'owner=eq.'+uid}, p=>{
+         const s=mapSession(p.new); if(!STATE.sessions.some(x=>x.id===s.id)){ STATE.sessions.push(s); onRemoteChange(); }});
+    RT_CHANNEL=ch;
+    ch.subscribe((st)=>{ STATE.live=(st==='SUBSCRIBED'); renderTopbar(); });
+  }catch(e){ /* realtime unavailable — parent can still use the ↻ Refresh button */ }
+}
+function onRemoteChange(){ if(STATE.role==='parent' && STATE.parentUnlocked && !SESSION){ renderParent(); } }
+
+/* ============================================================================
+   ENGINE — subject-scoped, pure over the attempt log
+   ============================================================================ */
+const ENGINE = {
+  studentAttempts(sid){ return STATE.attempts.filter(a=>a.studentId===sid); },
+  topicAttempts(sid,subj,topic){ return this.studentAttempts(sid).filter(a=>a.subject===subj && a.topic===topic); },
+  subjectAttempts(sid,subj){ return this.studentAttempts(sid).filter(a=>a.subject===subj); },
+  accuracy(l){ if(!l.length) return 0; return l.filter(a=>a.correct).length/l.length; },
+  consistency(l){ const r=l.slice(-CONFIG.recentWindow); if(r.length<2) return this.accuracy(r);
+    let f=0; for(let i=1;i<r.length;i++) if(r[i].correct!==r[i-1].correct) f++; return 1-(f/(r.length-1)); },
+  retention(l){ const d=Date.now()-86400000, older=l.filter(a=>a.at<d), rev=new Set(STATE.sessions.filter(s=>s.type==='review').map(s=>s.id));
+    const rv=l.filter(a=>rev.has(a.sessionId)); const pool=rv.length?rv:(older.length?older:l); return this.accuracy(pool); },
+  confidence(l){ const r=l.slice(-CONFIG.recentWindow); if(!r.length) return 0;
+    return r.filter(a=>a.correct&&a.responseMs&&a.responseMs<CONFIG.fastAnswerMs).length/r.length; },
+  assignStart(sid,subj,topic){ return STATE.assignments?.[sid]?.[subj]?.[topic]?.startLevel || 1; },
+  currentLevel(sid,subj,topic){
+    const start=this.assignStart(sid,subj,topic); const list=this.topicAttempts(sid,subj,topic);
+    let level=Math.max(start,this._settled(list,start));
+    const reg=list.slice(-CONFIG.regress.window);
+    if(reg.length>=CONFIG.regress.window && this.accuracy(reg)<CONFIG.regress.accuracy) level=Math.max(1,level-1);
+    return Math.min(5,Math.max(1,level));
+  },
+  _settled(list,start){ let level=start,w=[]; for(const a of list){ w.push(a.correct); if(w.length>CONFIG.promote.window) w.shift();
+    const acc=w.filter(Boolean).length/w.length; if(w.length>=CONFIG.promote.window && acc>=CONFIG.promote.accuracy && level<5){ level++; w=[]; } } return level; },
+  masteryScore(sid,subj,topic){ const list=this.topicAttempts(sid,subj,topic); if(!list.length) return 0;
+    const r=list.slice(-CONFIG.recentWindow), w=CONFIG.weights, level=this.currentLevel(sid,subj,topic);
+    return Math.round((w.accuracy*this.accuracy(r)+w.difficulty*(level/5)+w.consistency*this.consistency(list)+w.retention*this.retention(list)+w.confidence*this.confidence(list))*100); },
+  status(sid,subj,topic){ const list=this.topicAttempts(sid,subj,topic); if(!list.length) return 'Not Started';
+    const score=this.masteryScore(sid,subj,topic), level=this.currentLevel(sid,subj,topic), acc=Math.round(this.accuracy(list.slice(-CONFIG.recentWindow))*100), due=this.reviewDue(sid,subj,topic);
+    const mastered=level>=CONFIG.mastery.minLevel && score>=CONFIG.mastery.minScore && acc>=CONFIG.mastery.minAccuracy;
+    if(mastered) return due?'Needs Review':'Mastered'; if(due) return 'Needs Review';
+    if(score>=60) return 'Proficient'; if(score>=40) return 'Developing'; return 'Learning'; },
+  skillStats(sid,subj,topic){ const list=this.topicAttempts(sid,subj,topic), by={};
+    list.forEach(a=>{ (by[a.skill]=by[a.skill]||[]).push(a); });
+    return Object.entries(by).map(([skill,items])=>({skill,attempted:items.length,accuracy:Math.round(this.accuracy(items)*100)})).sort((a,b)=>a.accuracy-b.accuracy); },
+  weakestSkill(sid,subj,topic){ const s=this.skillStats(sid,subj,topic).filter(x=>x.attempted>=2); return s.length?s[0]:null; },
+  reviewDue(sid,subj,topic){ const r=STATE.reviews?.[sid]?.[subj]?.[topic]; return !!(r&&r.nextReviewAt&&r.nextReviewAt<=Date.now()); },
+  reviewsDue(sid,subj){ const out=[]; const r=STATE.reviews?.[sid]||{};
+    Object.keys(r).forEach(sub=>{ if(subj&&sub!==subj) return; Object.entries(r[sub]||{}).forEach(([t,v])=>{ if(v.nextReviewAt&&v.nextReviewAt<=Date.now()) out.push({subject:sub,topic:t}); }); });
+    return out; },
+  selectQuestions(sid,subj,topic,n){
+    const pool=approvedBank().filter(q=>q.subject===subj && q.topic===topic); if(!pool.length) return [];
+    const recent=new Set(this.subjectAttempts(sid,subj).slice(-CONFIG.noRepeatWithin).map(a=>a.questionId));
+    const level=this.currentLevel(sid,subj,topic), weak=this.weakestSkill(sid,subj,topic), out=[], used=new Set();
+    const pick=(fn)=>{ const c=pool.filter(q=>fn(q)&&!recent.has(q.question_id)&&!used.has(q.question_id)); if(!c.length) return null;
+      const q=c[Math.floor(Math.random()*c.length)]; used.add(q.question_id); return q; };
+    for(let i=0;i<n;i++){ let q=null; const near=x=>Math.abs(x.difficulty-level)<=0, adj=x=>Math.abs(x.difficulty-level)<=1;
+      if(weak&&Math.random()<0.55) q=pick(x=>x.skill===weak.skill&&near(x))||pick(x=>x.skill===weak.skill&&adj(x));
+      q=q||pick(near)||pick(adj)||pick(()=>true);
+      if(!q){ const any=pool.filter(x=>!used.has(x.question_id)); q=any.length?any[Math.floor(Math.random()*any.length)]:pool[i%pool.length]; if(q) used.add(q.question_id); }
+      if(q) out.push(q); }
+    return out; },
+  scheduleReview(sid,subj,topic){ const score=this.masteryScore(sid,subj,topic), st=this.status(sid,subj,topic);
+    if(st==='Not Started'||st==='Learning') return; const iv=CONFIG.reviewIntervalsDays; let d=iv.min;
+    if(score>=90)d=iv.high; else if(score>=80)d=iv.mid; else if(score>=70)d=iv.low;
+    STATE.reviews[sid]=STATE.reviews[sid]||{}; STATE.reviews[sid][subj]=STATE.reviews[sid][subj]||{};
+    STATE.reviews[sid][subj][topic]={nextReviewAt:Date.now()+d*86400000,intervalDays:d}; },
+  overallMastery(sid,subj){ const s=activeTopics(subj).map(t=>({s:this.masteryScore(sid,subj,t.name),n:this.topicAttempts(sid,subj,t.name).length})).filter(x=>x.n>0);
+    return s.length?Math.round(s.reduce((a,b)=>a+b.s,0)/s.length):0; },
+  // Explainable decision (README §Proposed engine decisions)
+  decision(sid,subj,topic){
+    const list=this.topicAttempts(sid,subj,topic);
+    if(!list.length) return {kind:'Not started', cls:'dec-notstarted', reason:'No attempts yet.'};
+    const acc=Math.round(this.accuracy(list.slice(-CONFIG.recentWindow))*100);
+    const level=this.currentLevel(sid,subj,topic), weak=this.weakestSkill(sid,subj,topic), attempts=list.length;
+    if(acc<60) return {kind:'Remediate', cls:'dec-remediate', reason:`Recent accuracy ${acc}% — step back and rebuild${weak?`, especially ${weak.skill}`:''}.`};
+    if(weak && weak.accuracy<70) return {kind:'Reinforce', cls:'dec-reinforce', reason:`Target the weak skill "${weak.skill}" (${weak.accuracy}%) at Level ${level} before moving up.`};
+    if(acc>=80 && attempts>=CONFIG.minAttempts && level<5) return {kind:'Promote', cls:'dec-promote', reason:`Strong at Level ${level} (${acc}% over ${attempts} attempts) — introduce Level ${level+1}.`};
+    if(acc>=80 && level>=5) return {kind:'Reinforce', cls:'dec-reinforce', reason:`Working at the top level (${acc}%) — keep consolidating for retention.`};
+    return {kind:'Reinforce', cls:'dec-reinforce', reason:`Building evidence (${acc}% over ${attempts}) — keep practising at Level ${level}.`};
+  },
+};
+
+/* ============================================================================
+   Session runtime
+   ============================================================================ */
+let SESSION=null;
+function startSession(subject,topic,type='practice',count){
+  const sid=STATE.activeStudentId, n=count||STATE.settings.questionsPerSession;
+  const qs=ENGINE.selectQuestions(sid,subject,topic,n);
+  if(!qs.length){ toast('No questions for this topic yet'); return; }
+  SESSION={id:'sess_'+Date.now()+'_'+Math.floor(performance.now()), subject, topic, type, questions:qs, index:0, correct:0, startedAt:Date.now(), qStart:Date.now(), answered:false};
+  renderQuiz();
+}
+function startDiagnostic(subject){
+  const sid=STATE.activeStudentId, all=activeTopics(subject).map(t=>t.name);
+  let topics=all.filter(t=>ENGINE.topicAttempts(sid,subject,t).length>0); if(topics.length<3) topics=all.slice(0,5);
+  if(!topics.length){ toast('Add some topics first'); return; }
+  const qs=[]; topics.forEach(t=>ENGINE.selectQuestions(sid,subject,t,2).forEach(q=>qs.push(q)));
+  for(let i=qs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[qs[i],qs[j]]=[qs[j],qs[i]];}
+  if(!qs.length){ toast('Add some questions first'); return; }
+  SESSION={id:'sess_'+Date.now()+'_'+Math.floor(performance.now()), subject, topic:'Diagnostic', type:'diagnostic', questions:qs, index:0, correct:0, startedAt:Date.now(), qStart:Date.now(), answered:false};
+  renderQuiz();
+}
+async function answerQuestion(letter){
+  if(SESSION.answered) return; SESSION.answered=true;
+  const q=SESSION.questions[SESSION.index], correct=letter===q.correct_answer; if(correct) SESSION.correct++;
+  const a={ id:'att_'+Date.now()+'_'+SESSION.index+'_'+Math.floor(performance.now()), studentId:STATE.activeStudentId, sessionId:SESSION.id,
+    subject:q.subject, questionId:q.question_id, topic:q.topic, skill:q.skill, difficulty:q.difficulty, selected:letter, correct, responseMs:Date.now()-SESSION.qStart, at:Date.now() };
+  STATE.attempts.push(a); showAnswerFeedback(q,letter,correct); dbInsertAttempt(a);
+}
+function nextQuestion(){ SESSION.index++; if(SESSION.index>=SESSION.questions.length){ finishSession(); return; }
+  SESSION.answered=false; SESSION.qStart=Date.now(); renderQuiz(); }
+function finishSession(){
+  const sid=STATE.activeStudentId, total=SESSION.questions.length;
+  const s={ id:SESSION.id, studentId:sid, subject:SESSION.subject, topic:SESSION.topic, type:SESSION.type, startedAt:SESSION.startedAt, completedAt:Date.now(), correct:SESSION.correct, total };
+  STATE.sessions.push(s);
+  if(SESSION.type!=='diagnostic'){ ENGINE.scheduleReview(sid,SESSION.subject,SESSION.topic); save(); }
+  dbInsertSession(s); renderSummary();
+}
+
+function gamification(sid){
+  const at=ENGINE.studentAttempts(sid), correct=at.filter(a=>a.correct).length, badges=[];
+  activeSubjects().forEach(sub=>activeTopics(sub.name).forEach(t=>{ if(ENGINE.status(sid,sub.name,t.name)==='Mastered') badges.push({icon:'🏅',label:t.name+' Mastered'}); }));
+  const days=new Set(at.map(a=>new Date(a.at).toDateString()));
+  return { stars:Math.floor(correct/10), badges, streak:days.size, correct, total:at.length };
+}
+
+/* ============================================================================
+   RENDER
+   ============================================================================ */
+const $=s=>document.querySelector(s);
+const main=()=>document.getElementById('main');
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2400); }
+function statusClass(st){ return 'st-'+st.toLowerCase().replace(/\s+/g,''); }
+function colorFor(s){ return s>=85?'var(--good)':s>=60?'var(--brand)':s>=40?'var(--warn)':'var(--bad)'; }
+
+function renderTopbar(){
+  const el=$('#topbarRight'); if(!STATE.user){ el.innerHTML=''; return; }
+  const stu=STATE.students.find(s=>s.id===STATE.activeStudentId)||STATE.students[0];
+  const live= STATE.role==='parent' ? `<span class="chip live">${STATE.live?'● live':'○ live'}</span>` : '';
+  el.innerHTML=`<div class="flex">${live}
+    <div class="who"><span class="avatar">${esc(stu.avatar)}</span><span>${esc(stu.name)}</span></div>
+    <div class="roleToggle" id="roleToggle">
+      <button data-role="child" class="${STATE.role==='child'?'active':''}">Child</button>
+      <button data-role="parent" class="${STATE.role==='parent'?'active':''}">Parent</button>
+    </div>
+    <button class="iconbtn" onclick="signOut()">Sign out</button></div>`;
+  const rt=$('#roleToggle');
+  if(rt) rt.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+    STATE.role=b.dataset.role; if(STATE.role==='child'){ SESSION=null; STATE.parentUnlocked=false; } saveLocal(); render(); });
+}
+
+function render(){
+  renderTopbar();
+  if(!CONFIGURED){ renderConfigNeeded(); return; }
+  if(!STATE.user){ renderAuth(); return; }
+  if(SESSION) return;
+  if(STATE.role==='child') renderChild(); else renderParent();
+}
+
+function renderConfigNeeded(){
+  main().innerHTML=`<div class="screen"><div class="card"><h1>⚙️ One setup step left</h1>
+    <p class="sub">Paste your Supabase keys near the top of <code>index.html</code>.</p></div></div>`;
+}
+
+/* ---------- Auth ---------- */
+let AUTH_MODE='signin';
+function renderAuth(){
+  main().innerHTML=`<div class="screen"><div class="lockwrap card">
+    <div style="font-size:2.4rem">✦</div><h2>Welcome to MasteryPath</h2>
+    <p class="muted">One family account. Sign in on your device and on your child's device to share content and progress.</p>
+    <div class="auth-tabs"><button class="${AUTH_MODE==='signin'?'active':''}" onclick="setAuthMode('signin')">Sign in</button>
+      <button class="${AUTH_MODE==='signup'?'active':''}" onclick="setAuthMode('signup')">Create account</button></div>
+    <div class="field"><label>Email</label><input type="email" id="email" placeholder="you@example.com" autocomplete="username"></div>
+    <div class="field"><label>Password</label><input type="password" id="password" placeholder="At least 6 characters" autocomplete="current-password"></div>
+    <button class="btn" id="authBtn" onclick="doAuth()">${AUTH_MODE==='signin'?'Sign in':'Create account'}</button></div></div>`;
+}
+function setAuthMode(m){ AUTH_MODE=m; renderAuth(); }
+async function doAuth(){
+  const email=$('#email').value.trim(), password=$('#password').value;
+  if(!email||!password){ toast('Enter email and password'); return; }
+  const btn=$('#authBtn'); btn.disabled=true; btn.textContent='Please wait…';
+  try{ let res=AUTH_MODE==='signup'?await SB.auth.signUp({email,password}):await SB.auth.signInWithPassword({email,password});
+    if(res.error){ toast(res.error.message); btn.disabled=false; btn.textContent=(AUTH_MODE==='signin'?'Sign in':'Create account'); return; }
+    if(!res.data.session){ toast('Account created. Check your email to confirm, then sign in.'); AUTH_MODE='signin'; renderAuth(); return; }
+    await afterLogin(res.data.session.user);
+  }catch(e){ toast('Error: '+e.message); btn.disabled=false; btn.textContent=(AUTH_MODE==='signin'?'Sign in':'Create account'); }
+}
+async function afterLogin(user){ STATE.user=user; const l=loadLocal(); STATE.role=l.role||'child'; STATE.currentSubject=l.currentSubject||null; STATE.parentUnlocked=false;
+  await loadAll(); render(); startRealtime(); }   // render first, then connect live updates
+async function signOut(){ stopRealtime(); try{ await SB.auth.signOut(); }catch(e){} STATE.user=null; SESSION=null; render(); }
+
+/* ---------- Child: subject picker ---------- */
+function renderChild(){
+  SESSION=null;
+  const subs=activeSubjects();
+  if(!subs.length){ main().innerHTML=`<div class="screen"><div class="empty card">No lessons yet 🙂<div class="note">A grown-up can add questions in the Parent area.</div></div></div>`; return; }
+  if(subs.length===1){ STATE.currentSubject=subs[0].name; renderChildHome(); return; }
+  if(!STATE.currentSubject || !subs.find(s=>s.name===STATE.currentSubject)){ renderSubjectPicker(subs); return; }
+  renderChildHome();
+}
+function renderSubjectPicker(subs){
+  const sid=STATE.activeStudentId, g=gamification(sid);
+  const cards=subs.map(s=>{ const om=ENGINE.overallMastery(sid,s.name); const done=ENGINE.subjectAttempts(sid,s.name).length;
+    return `<button class="topic" onclick="pickSubject('${jsq(s.name)}')"><div class="emoji">${s.emoji}</div>
+      <div class="tname">${esc(s.name)}</div><div class="bar"><span style="width:${done?om:0}%"></span></div>
+      <div class="meta"><span>${s.count} questions</span><span>${done?om+'%':'New'}</span></div></button>`; }).join('');
+  main().innerHTML=`<div class="screen">
+    <div class="between"><div><h1>Hi ${esc((STATE.students.find(s=>s.id===sid)||{}).name||'there')}! 👋</h1>
+      <p class="sub">What would you like to practise?</p></div>
+      <div class="flex"><span class="chip">⭐ ${g.stars}</span><span class="chip">🔥 ${g.streak}d</span></div></div>
+    <div class="grid">${cards}</div></div>`;
+}
+function pickSubject(name){ STATE.currentSubject=name; saveLocal(); renderChildHome(); }
+
+/* ---------- Child: topics within a subject ---------- */
+function renderChildHome(){
+  SESSION=null; const sid=STATE.activeStudentId, subject=STATE.currentSubject, g=gamification(sid), topics=activeTopics(subject);
+  const many=activeSubjects().length>1;
+  const cards=topics.map(t=>{ const score=ENGINE.masteryScore(sid,subject,t.name), level=ENGINE.currentLevel(sid,subject,t.name),
+    st=ENGINE.status(sid,subject,t.name), done=ENGINE.topicAttempts(sid,subject,t.name).length;
+    return `<button class="topic" onclick="startSession('${jsq(subject)}','${jsq(t.name)}')"><div class="emoji">${t.emoji}</div>
+      <div class="tname">${esc(t.name)}</div><div class="bar"><span style="width:${done?score:0}%"></span></div>
+      <div class="meta"><span class="pill lv lvl-${level}">Lv ${level}</span><span>${done?score+'%':'New'}</span></div>
+      <div style="margin-top:8px"><span class="pill ${statusClass(st)}">${st}</span></div></button>`; }).join('');
+  const due=ENGINE.reviewsDue(sid,subject);
+  const dueBanner=due.length?`<div class="card" style="background:var(--warn-soft);border-color:#f2d9ad"><div class="between">
+    <div><b>⏰ Time to review!</b><div class="note">Due: ${due.map(d=>esc(d.topic)).join(', ')}</div></div>
+    <button class="btn sm" onclick="startSession('${jsq(subject)}','${jsq(due[0].topic)}','review')">Review ${esc(due[0].topic)}</button></div></div>`:'';
+  main().innerHTML=`<div class="screen">
+    ${many?`<button class="back" onclick="backToSubjects()">← All subjects</button>`:''}
+    <div class="between"><div><h1>${subjectEmoji(subject)} ${esc(subject)}</h1><p class="sub">Pick a topic and let's practise.</p></div>
+      <div class="flex"><span class="chip">⭐ ${g.stars}</span><span class="chip">🔥 ${g.streak}d</span></div></div>
+    ${dueBanner}
+    ${topics.length?`<div class="grid">${cards}</div>`:`<div class="empty card">No topics in ${esc(subject)} yet.</div>`}
+    ${topics.length>=3?`<button class="btn ghost" style="margin-top:18px" onclick="startDiagnostic('${jsq(subject)}')">🎯 Test Me (mixed ${esc(subject)} topics)</button>`:''}
+  </div>`;
+}
+function backToSubjects(){ STATE.currentSubject=null; saveLocal(); renderChild(); }
+
+/* ---------- Quiz ---------- */
+function renderQuiz(){
+  const q=SESSION.questions[SESSION.index]; if(!q){ finishSession(); return; }
+  const num=SESSION.index+1, total=SESSION.questions.length, pct=Math.round((SESSION.index/total)*100);
+  const opts=['A','B','C','D'].map(L=>`<button class="opt" data-letter="${L}" onclick="answerQuestion('${L}')">${esc(q['option_'+L.toLowerCase()])}</button>`).join('');
+  main().innerHTML=`<div class="screen">
+    <div class="quizhead"><span>${SESSION.type==='diagnostic'?'🎯 Test Me — '+esc(SESSION.subject):esc(SESSION.subject)+' · '+esc(SESSION.topic)}</span><span>Q ${num} of ${total}</span></div>
+    <div class="progress"><span style="width:${pct}%"></span></div>
+    <div class="card"><div class="qtext">${esc(q.question_text)}</div><div class="options" id="options">${opts}</div>
+      <div class="feedback" id="feedback"></div><button class="btn hidden" id="nextBtn" onclick="nextQuestion()">Next →</button></div>
+    <button class="btn gray sm" onclick="quitSession()" style="width:auto">Exit</button></div>`;
+}
+function showAnswerFeedback(q,letter,correct){
+  document.querySelectorAll('#options .opt').forEach(b=>{ const L=b.dataset.letter; b.disabled=true;
+    if(L===q.correct_answer) b.classList.add('correct'); else if(L===letter) b.classList.add('wrong'); else b.classList.add('dim'); });
+  const fb=$('#feedback'); fb.className='feedback show '+(correct?'ok':'no');
+  fb.innerHTML=(correct?'Correct! 🎉':"Not quite. Let's look at this one.")+`<div class="expl">${esc(q.explanation||'')}</div>`;
+  const nb=$('#nextBtn'); nb.classList.remove('hidden'); nb.textContent=(SESSION.index+1>=SESSION.questions.length)?'See my results →':'Next →';
+}
+function quitSession(){ SESSION=null; render(); }
+
+/* ---------- Summary ---------- */
+function renderSummary(){
+  const sid=STATE.activeStudentId, total=SESSION.questions.length, correct=SESSION.correct, acc=Math.round(correct/total*100);
+  const subject=SESSION.subject, topic=SESSION.type==='diagnostic'?null:SESSION.topic, g=gamification(sid);
+  const starEmoji=acc>=90?'⭐⭐⭐':acc>=70?'⭐⭐':acc>=40?'⭐':'✨', face=acc>=90?'🏆':acc>=70?'😃':acc>=40?'🙂':'💪';
+  let box='';
+  if(topic){ const score=ENGINE.masteryScore(sid,subject,topic), level=ENGINE.currentLevel(sid,subject,topic), st=ENGINE.status(sid,subject,topic), weak=ENGINE.weakestSkill(sid,subject,topic);
+    box=`<div class="card"><div class="between"><b>${esc(topic)}</b><span class="pill ${statusClass(st)}">${st}</span></div>
+      <div class="statgrid"><div class="stat"><b>${score}%</b><span>Mastery</span></div><div class="stat"><b>Lv ${level}</b><span>${LEVEL_NAMES[level]}</span></div><div class="stat"><b>${acc}%</b><span>This session</span></div></div>
+      ${weak?`<div class="note">Let's practise a bit more on <b>${esc(weak.skill)}</b> (${weak.accuracy}%).</div>`:''}</div>`;
+  } else { const rows=diagnosticBreakdown();
+    box=`<div class="card"><b>🎯 Diagnostic — ${esc(subject)}</b><table style="margin-top:10px"><thead><tr><th>Topic</th><th class="num">Score</th></tr></thead><tbody>
+      ${rows.map(r=>`<tr><td>${esc(r.topic)}</td><td class="num">${r.acc}%</td></tr>`).join('')}</tbody></table>
+      ${rows.length?`<div class="note" style="margin-top:8px">Strongest: <b>${esc(rows[0].topic)}</b> · Weakest: <b>${esc(rows[rows.length-1].topic)}</b></div>`:''}</div>`; }
+  const badges=g.badges.length?`<div class="badges">${g.badges.slice(0,6).map(b=>`<span class="badge">${b.icon} ${esc(b.label)}</span>`).join('')}</div>`:'';
+  main().innerHTML=`<div class="screen celebrate"><div class="big">${face}</div><h1>${correct} out of ${total} correct</h1><div class="stars">${starEmoji}</div>${badges}</div>
+    ${box}<div class="btnrow">${topic?`<button class="btn" onclick="startSession('${jsq(subject)}','${jsq(topic)}')">Keep practising ${esc(topic)}</button>`:''}
+    <button class="btn ghost" onclick="quitSession()">Back to topics</button></div>`;
+  SESSION=null;
+}
+function diagnosticBreakdown(){ const last=STATE.sessions[STATE.sessions.length-1]; const items=STATE.attempts.filter(a=>a.sessionId===last.id);
+  const by={}; items.forEach(a=>{ (by[a.topic]=by[a.topic]||[]).push(a); });
+  return Object.entries(by).map(([topic,l])=>({topic,acc:Math.round(l.filter(a=>a.correct).length/l.length*100)})).sort((a,b)=>b.acc-a.acc); }
+
+/* ============================================================================
+   PARENT
+   ============================================================================ */
+let PARENT_TAB='dashboard';
+function ensureParentSubject(){ const subs=activeSubjects(); if(!subs.length){ STATE.parentSubject=null; return; }
+  if(!STATE.parentSubject||!subs.find(s=>s.name===STATE.parentSubject)) STATE.parentSubject=subs[0].name; }
+function renderParent(){
+  SESSION=null; if(!STATE.parentUnlocked){ renderParentLock(); return; }
+  ensureParentSubject();
+  const tabs=[['dashboard','Dashboard'],['progress','Student Progress'],['bank','Question Bank'],['assign','Assignments']];
+  const showSubjBar = PARENT_TAB!=='bank' && activeSubjects().length>0;
+  const subjBar = showSubjBar ? `<div class="subjchips">${activeSubjects().map(s=>`<button class="${s.name===STATE.parentSubject?'active':''}" onclick="setParentSubject('${jsq(s.name)}')">${s.emoji} ${esc(s.name)}</button>`).join('')}</div>` : '';
+  const learner=(STATE.students[0]||{}).name||'your child';
+  main().innerHTML=`<div class="screen">
+    <div class="between"><h1>Parent Dashboard</h1><button class="btn sm gray" onclick="refreshData()">↻ Refresh</button></div>
+    <p class="sub">Track mastery, spot weak skills, manage the question bank. Updates live as ${esc(learner)} practises.</p>
+    <div class="tabs">${tabs.map(([k,l])=>`<button class="${k===PARENT_TAB?'active':''}" onclick="setParentTab('${k}')">${l}</button>`).join('')}</div>
+    ${subjBar}
+    <div id="parentBody"></div></div>`;
+  renderParentBody();
+}
+function setParentTab(t){ PARENT_TAB=t; renderParent(); }
+function setParentSubject(s){ STATE.parentSubject=s; renderParent(); }
+async function refreshData(){ await loadAll(); toast('Refreshed'); renderParent(); }
+function renderParentLock(){
+  main().innerHTML=`<div class="screen"><div class="lockwrap card"><div style="font-size:2.4rem">🔒</div><h2>Parent area</h2>
+    <p class="muted">Enter your parent PIN.</p><div class="field"><input type="password" id="pin" inputmode="numeric" placeholder="PIN (default 1234)"></div>
+    <button class="btn" onclick="tryUnlock()">Unlock</button><p class="note">Change the PIN under Assignments.</p></div></div>`;
+}
+function tryUnlock(){ if($('#pin').value===STATE.settings.parentPin){ STATE.parentUnlocked=true; renderParent(); } else toast('Incorrect PIN'); }
+function renderParentBody(){ const el=$('#parentBody');
+  if(PARENT_TAB==='dashboard') el.innerHTML=parentDashboard();
+  else if(PARENT_TAB==='progress') el.innerHTML=parentProgress();
+  else if(PARENT_TAB==='bank') el.innerHTML=parentBank();
+  else if(PARENT_TAB==='assign') el.innerHTML=parentAssign(); }
+
+function parentDashboard(){
+  const sid=STATE.activeStudentId, subject=STATE.parentSubject;
+  if(!subject) return `<div class="empty">No subjects yet — add questions in the Question Bank tab.</div>`;
+  const overall=ENGINE.overallMastery(sid,subject), attempts=ENGINE.subjectAttempts(sid,subject), due=ENGINE.reviewsDue(sid,subject);
+  const rows=activeTopics(subject).map(t=>({name:t.name,n:ENGINE.topicAttempts(sid,subject,t.name).length,score:ENGINE.masteryScore(sid,subject,t.name),level:ENGINE.currentLevel(sid,subject,t.name),st:ENGINE.status(sid,subject,t.name),dec:ENGINE.decision(sid,subject,t.name)}));
+  const studied=rows.filter(r=>r.n>0), mastered=studied.filter(r=>r.st==='Mastered').length;
+  const map=rows.length?rows.map(r=>`<tr><td>${esc(r.name)}</td><td class="num">${r.n?r.score+'%':'—'}</td><td class="num">${r.n?r.level:'—'}</td>
+    <td><div class="flex"><div class="minibar"><span style="width:${r.n?r.score:0}%;background:${colorFor(r.score)}"></span></div><span class="pill ${statusClass(r.st)}">${r.st}</span></div></td>
+    <td><span class="pill ${r.dec.cls}">${r.dec.kind}</span></td></tr>`).join('')
+    :`<tr><td colspan="5" class="muted" style="text-align:center;padding:16px">No topics in ${esc(subject)} yet.</td></tr>`;
+  // Next-step recommendations (explainable)
+  const recs=studied.filter(r=>r.dec.kind!=='Promote').slice(0,4).map(r=>`<div class="note" style="margin:6px 0"><span class="pill ${r.dec.cls}">${r.dec.kind}</span> <b>${esc(r.name)}</b> — ${esc(r.dec.reason)}</div>`).join('');
+  return `<div class="kpis">
+    <div class="kpi"><b>${overall||'—'}%</b><span>${esc(subject)} mastery</span></div>
+    <div class="kpi"><b>${attempts.length}</b><span>Questions attempted</span></div>
+    <div class="kpi"><b>${mastered}</b><span>Topics mastered</span></div>
+    <div class="kpi"><b>${due.length}</b><span>Due for review</span></div></div>
+    <div class="card"><h3>${subjectEmoji(subject)} ${esc(subject)} — Mastery Map</h3>
+    <table><thead><tr><th>Topic</th><th class="num">Mastery</th><th class="num">Lv</th><th>Status</th><th>Next step</th></tr></thead><tbody>${map}</tbody></table></div>
+    ${recs?`<div class="card"><h3>Recommended next steps</h3>${recs}<div class="note" style="margin-top:6px">Decisions follow your README: <b>Promote</b> (ready for next level), <b>Reinforce</b> (target a weak skill), <b>Remediate</b> (step back and rebuild).</div></div>`:''}
+    ${recentSessionsCard(sid,subject)}`;
+}
+function recentSessionsCard(sid,subject){ const ss=STATE.sessions.filter(s=>s.studentId===sid && s.subject===subject).slice(-8).reverse(); if(!ss.length) return '';
+  const rows=ss.map(s=>`<tr><td>${new Date(s.completedAt||s.startedAt).toLocaleString()}</td><td>${esc(s.topic)}</td><td><span class="chip">${esc(s.type)}</span></td><td class="num">${s.correct}/${s.total}</td></tr>`).join('');
+  return `<div class="card"><h3>Recent sessions</h3><table><thead><tr><th>When</th><th>Topic</th><th>Type</th><th class="num">Score</th></tr></thead><tbody>${rows}</tbody></table></div>`; }
+
+function parentProgress(){
+  const sid=STATE.activeStudentId, subject=STATE.parentSubject;
+  if(!subject) return `<div class="empty">No subjects yet.</div>`;
+  const studied=activeTopics(subject).map(t=>t.name).filter(t=>ENGINE.topicAttempts(sid,subject,t).length>0);
+  if(!studied.length) return `<div class="empty">No practice in ${esc(subject)} yet. Switch to the Child view and answer a few questions.</div>`;
+  return studied.map(topic=>{ const skills=ENGINE.skillStats(sid,subject,topic), score=ENGINE.masteryScore(sid,subject,topic), level=ENGINE.currentLevel(sid,subject,topic), st=ENGINE.status(sid,subject,topic), attempts=ENGINE.topicAttempts(sid,subject,topic), dec=ENGINE.decision(sid,subject,topic);
+    const avg=Math.round(attempts.reduce((a,b)=>a+(b.responseMs||0),0)/attempts.length/1000*10)/10;
+    const sr=skills.map(s=>`<tr><td>${esc(s.skill)}</td><td class="num">${s.attempted}</td><td><div class="flex"><div class="minibar"><span style="width:${s.accuracy}%;background:${colorFor(s.accuracy)}"></span></div>${s.accuracy}%</div></td></tr>`).join('');
+    return `<div class="card"><div class="between"><h3 style="margin:0">${esc(topic)}</h3><span class="pill ${statusClass(st)}">${st}</span></div>
+      <div class="statgrid"><div class="stat"><b>${score}%</b><span>Mastery</span></div><div class="stat"><b>Lv ${level}</b><span>Difficulty</span></div><div class="stat"><b>${avg}s</b><span>Avg time</span></div></div>
+      <div class="note" style="margin-bottom:8px"><span class="pill ${dec.cls}">${dec.kind}</span> ${esc(dec.reason)}</div>
+      <table><thead><tr><th>Skill</th><th class="num">Qs</th><th>Accuracy</th></tr></thead><tbody>${sr}</tbody></table></div>`; }).join('');
+}
+
+/* ---------- Question bank + import ---------- */
+let IMPORT_PREVIEW=null;
+function parentBank(){
+  // group by subject -> topic
+  const bySub={}; bank().forEach(q=>{ (bySub[q.subject]=bySub[q.subject]||{}); bySub[q.subject][q.topic]=(bySub[q.subject][q.topic]||0)+1; });
+  const subs=Object.keys(bySub).sort((a,b)=>{ const ia=SUBJECT_ORDER.indexOf(a),ib=SUBJECT_ORDER.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b); });
+  const groups= subs.length ? subs.map(sub=>{
+    const topics=Object.keys(bySub[sub]).sort((a,b)=>{const ia=PREFERRED.indexOf(a),ib=PREFERRED.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b);});
+    const rows=topics.map(t=>`<tr><td>${esc(t)}</td><td class="num">${bySub[sub][t]}</td>
+      <td class="right"><button class="btn sm gray" onclick="deleteTopic('${jsq(sub)}','${jsq(t)}')">🗑 Delete</button></td></tr>`).join('');
+    return `<div class="card"><div class="between"><h3 style="margin:0">${subjectEmoji(sub)} ${esc(sub)}</h3><span class="chip">${topics.length} topics</span></div>
+      <table style="margin-top:6px"><thead><tr><th>Topic</th><th class="num">Questions</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }).join('') : `<div class="empty card">No questions yet.<div style="margin-top:10px"><button class="btn sm ghost" onclick="seedSample()">Load sample questions (3 subjects)</button></div></div>`;
+  return `${groups}
+  <div class="card"><h3>Import questions</h3>
+    <p class="note">Paste CSV or JSON. Header: <code>subject,topic,skill,difficulty,question,option_a,option_b,option_c,option_d,answer,explanation</code>. The <b>subject</b> column decides which subject it lands in (e.g. Mathematics, English, Science).</p>
+    <div class="field"><textarea id="importText" placeholder="Paste CSV or JSON here..."></textarea></div>
+    <div class="btnrow"><button class="btn sm" onclick="validateImport()">Validate</button>
+      <button class="btn sm gray" onclick="loadSampleImport()">Load a sample row</button>
+      ${bank().length?'':'<button class="btn sm gray" onclick="seedSample()">Load sample questions</button>'}</div>
+    <div id="importResult"></div></div>`;
+}
+function loadSampleImport(){ $('#importText').value=`subject,topic,skill,difficulty,question,option_a,option_b,option_c,option_d,answer,explanation
+English,Grammar,Nouns,1,Which word is a noun?,quickly,dog,run,blue,B,A noun names a person place or thing.
+Mathematics,Fractions,Comparing fractions,2,Which is greater?,1/2,2/3,1/3,1/4,B,2/3 is greater than 1/2.`; }
+async function seedSample(){
+  const payload=SAMPLE_SEED.map(r=>({owner:STATE.user.id,subject:r[0],topic:r[1],skill:r[2],difficulty:r[3],question_text:r[4],option_a:r[5],option_b:r[6],option_c:r[7],option_d:r[8],correct_answer:r[9],explanation:r[10],status:'approved'}));
+  const {data,error}=await SB.from('questions').insert(payload).select();
+  if(error){ toast('Seed failed: '+error.message); return; }
+  data.forEach(row=>STATE.questions.push(mapQuestion(row))); toast('Sample questions added'); renderParent();
+}
+function parseImport(text){ text=text.trim(); if(!text) return {rows:[],parseError:'Nothing to import.'};
+  if(text[0]==='['||text[0]==='{'){ try{ let d=JSON.parse(text); if(!Array.isArray(d)) d=[d]; return {rows:d.map(normalise)}; }catch(e){ return {rows:[],parseError:'Invalid JSON: '+e.message}; } }
+  const lines=text.split(/\r?\n/).filter(l=>l.trim()); const header=splitCSV(lines[0]).map(h=>h.trim().toLowerCase()); const rows=[];
+  for(let i=1;i<lines.length;i++){ const c=splitCSV(lines[i]); const o={}; header.forEach((h,idx)=>o[h]=(c[idx]??'').trim()); rows.push(normalise(o)); }
+  return {rows}; }
+function normalise(o){ const g=(...k)=>{ for(const x of k){ if(o[x]!==undefined&&o[x]!=='') return o[x]; } return ''; };
+  return { subject:g('subject')||'Mathematics', topic:g('topic'), skill:g('skill'), difficulty:parseInt(g('difficulty'),10),
+    question_text:g('question_text','question'), option_a:g('option_a'), option_b:g('option_b'), option_c:g('option_c'), option_d:g('option_d'),
+    correct_answer:(g('correct_answer','answer')||'').toUpperCase(), explanation:g('explanation') }; }
+function splitCSV(line){ const out=[]; let cur='',q=false;
+  for(let i=0;i<line.length;i++){ const c=line[i]; if(q){ if(c==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else { if(c===','){out.push(cur);cur='';} else if(c==='"') q=true; else cur+=c; } } out.push(cur); return out; }
+function validateImport(){
+  const {rows,parseError}=parseImport($('#importText').value);
+  if(parseError){ $('#importResult').innerHTML=`<div class="errlist">${esc(parseError)}</div>`; IMPORT_PREVIEW=null; return; }
+  const valid=[],errors=[],seen=new Set(); const existing=new Set(bank().map(q=>(q.subject+'|'+q.topic+'|'+q.question_text).toLowerCase()));
+  rows.forEach((r,i)=>{ const p=[];
+    if(!r.subject)p.push('missing subject'); if(!r.topic)p.push('missing topic'); if(!r.skill)p.push('missing skill'); if(!r.question_text)p.push('missing question');
+    if(!(r.difficulty>=1&&r.difficulty<=5))p.push('invalid difficulty (need 1–5)');
+    ['option_a','option_b','option_c','option_d'].forEach(k=>{ if(!r[k])p.push('missing '+k); });
+    if(!['A','B','C','D'].includes(r.correct_answer))p.push('answer must be A–D');
+    const key=(r.subject+'|'+r.topic+'|'+r.question_text).toLowerCase(); if(existing.has(key)||seen.has(key))p.push('duplicate question'); seen.add(key);
+    if(p.length)errors.push({row:i+1,problems:p}); else valid.push(r); });
+  IMPORT_PREVIEW={valid,errors}; renderImportResult();
+}
+function renderImportResult(){ const {valid,errors}=IMPORT_PREVIEW;
+  const pr=valid.slice(0,8).map(r=>`<tr><td>${esc(r.subject)}</td><td>${esc(r.topic)}</td><td>${esc(r.skill)}</td><td class="num">${r.difficulty}</td><td>${esc(r.question_text)}</td><td>${esc(r.correct_answer)}</td></tr>`).join('');
+  const eb=errors.length?`<div class="errlist"><b>${errors.length} row(s) rejected:</b><br>${errors.slice(0,8).map(e=>`Row ${e.row}: ${e.problems.join(', ')}`).join('<br>')}${errors.length>8?'<br>…':''}</div>`:'';
+  $('#importResult').innerHTML=`<div class="between" style="margin-top:12px"><span class="${valid.length?'valid-ok':'valid-bad'}">✓ ${valid.length} valid</span><span class="${errors.length?'valid-bad':'muted'}">✗ ${errors.length} with errors</span></div>
+    ${valid.length?`<table style="margin-top:8px"><thead><tr><th>Subject</th><th>Topic</th><th>Skill</th><th class="num">Diff</th><th>Question</th><th>Ans</th></tr></thead><tbody>${pr}</tbody></table>${valid.length>8?`<div class="note">…and ${valid.length-8} more</div>`:''}`:''}
+    ${eb}${valid.length?`<button class="btn" id="approveBtn" onclick="approveImport()">Approve &amp; add ${valid.length} question(s)</button>`:''}`;
+}
+async function approveImport(){
+  if(!IMPORT_PREVIEW||!IMPORT_PREVIEW.valid.length) return;
+  const btn=$('#approveBtn'); if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+  const payload=IMPORT_PREVIEW.valid.map(r=>({owner:STATE.user.id,subject:r.subject,topic:r.topic,skill:r.skill,difficulty:r.difficulty,question_text:r.question_text,option_a:r.option_a,option_b:r.option_b,option_c:r.option_c,option_d:r.option_d,correct_answer:r.correct_answer,explanation:r.explanation,status:'approved'}));
+  const {data,error}=await SB.from('questions').insert(payload).select();
+  if(error){ toast('Import failed: '+error.message); if(btn){btn.disabled=false;btn.textContent='Approve & add';} return; }
+  data.forEach(row=>STATE.questions.push(mapQuestion(row))); IMPORT_PREVIEW=null; toast(data.length+' question(s) added'); renderParent();
+}
+async function deleteTopic(subject,name){
+  if(!confirm(`Remove "${name}" (${subject}) from every device?\n\nIts questions and practice history will be deleted.`)) return;
+  await dbDeleteTopic(subject,name);
+  STATE.questions=STATE.questions.filter(q=>!(q.subject===subject&&q.topic===name));
+  STATE.attempts=STATE.attempts.filter(a=>!(a.subject===subject&&a.topic===name));
+  STATE.sessions=STATE.sessions.filter(s=>!(s.subject===subject&&s.topic===name));
+  if(STATE.reviews[STATE.activeStudentId]?.[subject]) delete STATE.reviews[STATE.activeStudentId][subject][name];
+  if(STATE.assignments[STATE.activeStudentId]?.[subject]) delete STATE.assignments[STATE.activeStudentId][subject][name];
+  save(); toast(`"${name}" removed`); renderParent();
+}
+
+/* ---------- Assignments ---------- */
+function parentAssign(){
+  const sid=STATE.activeStudentId, subject=STATE.parentSubject, at=subject?activeTopics(subject):[], stu=STATE.students.find(s=>s.id===sid)||STATE.students[0];
+  const topicOpts= (subject&&at.length)?at.map(t=>{ const cur=ENGINE.assignStart(sid,subject,t.name);
+    return `<tr><td>${esc(t.name)}</td><td><select onchange="setStartLevel('${jsq(subject)}','${jsq(t.name)}',this.value)">${[1,2,3,4,5].map(l=>`<option value="${l}" ${l===cur?'selected':''}>Level ${l} — ${LEVEL_NAMES[l]}</option>`).join('')}</select></td>
+      <td class="right"><button class="btn sm gray" onclick="resetTopic('${jsq(subject)}','${jsq(t.name)}')">Reset mastery</button></td></tr>`; }).join('')
+    :`<tr><td colspan="3" class="muted" style="text-align:center;padding:16px">No topics in this subject yet.</td></tr>`;
+  return `<div class="card"><h3>Child &amp; session</h3>
+    <div class="field"><label>Child's name</label><input type="text" id="childName" value="${esc(stu.name)}" onchange="setChildName(this.value)"></div>
+    <div class="field"><label>Questions per session</label><input type="number" min="4" max="30" value="${STATE.settings.questionsPerSession}" onchange="setQPS(this.value)"></div>
+    <div class="field"><label>Parent PIN</label><input type="password" id="newPin" placeholder="Set a new PIN" inputmode="numeric"><button class="btn sm" style="margin-top:8px;width:auto" onclick="setPin()">Update PIN</button></div></div>
+  <div class="card"><h3>Assign starting difficulty — ${subject?esc(subject):'(no subject)'}</h3>
+    <p class="note">Set where each topic begins for this subject. The engine adapts up or down from here.</p>
+    <table><thead><tr><th>Topic</th><th>Start level</th><th></th></tr></thead><tbody>${topicOpts}</tbody></table></div>
+  <div class="card"><h3>Account</h3><div class="btnrow"><button class="btn sm gray" onclick="exportData()">Export progress (JSON)</button>
+    <button class="btn sm gray" onclick="hardReset()">Erase all my data</button></div>
+    <p class="note">Signed in as ${esc(STATE.user.email||'')}.</p></div>`;
+}
+function setChildName(v){ v=(v||'').trim()||'Learner'; STATE.students[0].name=v; STATE.students[0].avatar=v[0].toUpperCase(); save(); renderTopbar(); toast('Saved'); }
+function setStartLevel(subject,topic,l){ const sid=STATE.activeStudentId;
+  STATE.assignments[sid]=STATE.assignments[sid]||{}; STATE.assignments[sid][subject]=STATE.assignments[sid][subject]||{};
+  STATE.assignments[sid][subject][topic]={startLevel:parseInt(l,10)}; save(); toast('Saved'); }
+async function resetTopic(subject,topic){ const sid=STATE.activeStudentId, uid=STATE.user.id;
+  await SB.from('attempts').delete().eq('owner',uid).eq('student_id',sid).eq('subject',subject).eq('topic',topic);
+  await SB.from('sessions').delete().eq('owner',uid).eq('student_id',sid).eq('subject',subject).eq('topic',topic);
+  STATE.attempts=STATE.attempts.filter(a=>!(a.studentId===sid&&a.subject===subject&&a.topic===topic));
+  STATE.sessions=STATE.sessions.filter(s=>!(s.studentId===sid&&s.subject===subject&&s.topic===topic));
+  if(STATE.reviews[sid]?.[subject]) delete STATE.reviews[sid][subject][topic]; save(); toast(topic+' mastery reset'); renderParent(); }
+function setQPS(v){ STATE.settings.questionsPerSession=Math.max(4,Math.min(30,parseInt(v,10)||10)); save(); toast('Saved'); }
+function setPin(){ const v=$('#newPin').value.trim(); if(v){ STATE.settings.parentPin=v; save(); toast('PIN updated'); } }
+function exportData(){ const blob=new Blob([JSON.stringify({questions:STATE.questions,attempts:STATE.attempts,sessions:STATE.sessions,reviews:STATE.reviews,assignments:STATE.assignments},null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='masterypath-progress.json'; a.click(); }
+async function hardReset(){ if(!confirm('Erase ALL questions and progress for this account? This cannot be undone.')) return;
+  const uid=STATE.user.id; await SB.from('attempts').delete().eq('owner',uid); await SB.from('sessions').delete().eq('owner',uid); await SB.from('questions').delete().eq('owner',uid);
+  STATE.questions=[];STATE.attempts=[];STATE.sessions=[];STATE.reviews={};STATE.assignments={};
+  await saveSettings(); toast('All data erased'); PARENT_TAB='dashboard'; STATE.parentSubject=null; renderParent(); }
+
+/* ---------- Boot ---------- */
+(async function boot(){
+  if(!CONFIGURED){ render(); return; }
+  try{ const {data}=await SB.auth.getSession();
+    if(data&&data.session){ await afterLogin(data.session.user); } else { render(); }
+    SB.auth.onAuthStateChange((_e,session)=>{ if(!session){ STATE.user=null; render(); } });
+  }catch(e){ toast('Startup error: '+e.message); render(); }
+})();
+</script>
+</body>
+</html>
