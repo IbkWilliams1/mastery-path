@@ -1,24 +1,18 @@
 # MasteryPath
 
-> An adaptive learning and mastery-assessment platform that turns lesson content into
-> progressive, skill-aware practice — and lets a parent track real understanding from anywhere.
+> An adaptive learning and mastery-assessment platform that turns lesson content into progressive, skill-aware practice—and helps a parent track real understanding from anywhere.
 
-**Live app:** https://ibkwilliams1.github.io/mastery-path/
-**Repository:** `mastery-path`
+[**Open the live app**](https://ibkwilliams1.github.io/mastery-path/) · **Repository:** `mastery-path`
 
-MasteryPath is a subject-agnostic learning platform designed to help a learner move from
-first exposure to demonstrated mastery. It combines AI-assisted question-bank creation,
-human validation, adaptive assessment, skill-level progress tracking, and parent-facing
-insight — all in a single, cloud-backed web app.
+MasteryPath is a subject-agnostic learning platform designed to help a learner move from first exposure to demonstrated mastery. It combines AI-assisted question-bank creation, human validation, adaptive assessment, skill-level progress tracking, and parent-facing insight in a single cloud-backed web app.
 
-It began with mathematics for one child, but the architecture is deliberately built to
-expand across subjects:
+It began with mathematics for one child, but its architecture is deliberately designed to expand across subjects:
 
 ```text
 MasteryPath
-├── Mathematics   (live)
-├── English       (live)
-├── Science       (live)
+├── Math Mastery
+├── English Mastery
+├── Science Mastery
 └── Future subject modules
 ```
 
@@ -26,107 +20,81 @@ MasteryPath
 
 ## Purpose
 
-MasteryPath exists to answer a more useful question than *"How many questions did the
-learner answer?"*:
+MasteryPath exists to answer a more useful question than *“How many questions did the learner answer?”*
 
-> What has the learner genuinely understood, where are the remaining gaps, and what should
-> they practise next?
+> What has the learner genuinely understood, where are the remaining gaps, and what should they practise next?
 
-The platform turns lessons into measurable learning outcomes. It helps a parent or trusted
-reviewer prepare relevant practice content, monitor understanding **remotely**, identify weak
-skills, and intervene with greater precision.
+The platform turns lessons into measurable learning outcomes. It helps a parent or trusted reviewer prepare relevant practice content, monitor understanding **remotely**, identify weak skills, and intervene with greater precision.
 
 ---
 
-## Origin & journey
+## Origin and product journey
 
-The project started as a practical way to support a child taking online lessons from another
-city. The workflow was simple: take a lesson video, use an AI tool (Gemini / NotebookLM) to
-generate questions grounded in that lesson, review them, and let the child practise until the
-system had real evidence of mastery.
+The project started as a practical way to support a child taking online lessons from another city. The initial workflow was simple: take a lesson video, use an AI tool such as Gemini or NotebookLM to generate questions grounded in that lesson, review them, and let the child practise until the system had credible evidence of mastery.
 
-Turning that idea into a working product happened in three honest stages, and the second
-stage is where the architecture was decided:
+Turning that idea into a working product happened in three stages:
 
-1. **Single-device prototype.** The first version was a self-contained web page that stored
-   everything — questions and progress — in the browser's local storage. It proved the
-   learning engine worked, but it had a fatal limitation for this use case: the data never
-   left the device. A parent in one city could not see a child practising in another, and
-   imported questions did not travel between devices.
+1. **Single-device prototype.** The first version was a self-contained web page that stored questions and progress in the browser’s local storage. It proved that the learning engine worked, but revealed a critical limitation: the data never left the device. A parent in one city could not see a child practising in another, and imported questions did not travel between devices.
 
-2. **The realisation that shaped the stack.** The whole point was *remote* monitoring and
-   *shared* content. That requires a shared brain in the cloud — a database both people
-   connect to, with real logins. This is the moment **Supabase** entered the project (see
-   below). The app was rebuilt so questions, attempts, and progress live in the cloud, with
-   one family account signing in from any device.
+2. **Remote workflow requirement.** Remote monitoring and shared content were central to the use case. Meeting that requirement needed a shared cloud data layer and authenticated access. The app was therefore rebuilt with **Supabase**, allowing questions, attempts, sessions, and progress to persist in the cloud and remain available across devices.
 
-3. **Generalisation and launch.** With cloud data in place, the platform was generalised from
-   "Math Mastery" to **MasteryPath** — a subject-agnostic model (Learner → Subject → Topic →
-   Skill → Difficulty) — and deployed publicly on GitHub Pages.
+3. **Generalisation and launch.** With the cloud architecture in place, the application evolved from “Math Mastery” into **MasteryPath**: a subject-agnostic platform built around the model Learner → Subject → Topic → Skill → Difficulty. It was then deployed publicly through GitHub Pages.
 
-A central principle survived every stage: **AI assists with content preparation, but does not
-replace human judgment.** A parent validates every generated question before a learner sees it.
-NotebookLM is the current generation tool, not a permanent dependency — MasteryPath is the
-learning engine that consumes validated question banks.
+A central principle survived every stage: **AI assists with content preparation, but does not replace human judgment.** A parent or trusted reviewer validates generated questions before a learner sees them. NotebookLM is the current generation tool, not a permanent dependency; MasteryPath is the learning engine that consumes validated question banks.
 
 ---
 
 ## How Supabase fits in
 
-MasteryPath's frontend is a single static web page. Everything that needs to be *shared,
-private, and persistent* is handled by [Supabase](https://supabase.com), which is what makes
-remote monitoring possible. Each Supabase capability maps cleanly to a product responsibility:
+MasteryPath’s frontend is a static web application. Everything that needs to be **shared, private, and persistent** is handled by [Supabase](https://supabase.com), making remote monitoring possible.
 
 | Responsibility | Supabase feature | What it enables |
 |---|---|---|
-| **One family login** | Supabase Auth (email + password) | The same account signs in on the parent's device and the child's device, in different cities. |
-| **Shared, durable data** | Postgres database | Questions, attempts, sessions, and settings live in the cloud, so they sync across every device and survive restarts. |
-| **Privacy by design** | Row Level Security (RLS) | Every table row is scoped to its owner. An account can only ever read or write *its own* data — which is precisely why the public "publishable" key is safe to ship in a public repository. |
-| **Live parent monitoring** | Supabase Realtime | The parent dashboard updates as the child answers, without a manual refresh. |
+| **One family login** | Supabase Auth (email and password) | The same account can sign in on the parent’s and learner’s devices in different locations. |
+| **Shared, durable data** | Postgres database | Questions, attempts, sessions, and settings sync across devices and survive browser restarts. |
+| **Privacy by design** | Row Level Security (RLS) | Each row is scoped to its owner, so an authenticated account can access only its own data. |
+| **Live parent monitoring** | Supabase Realtime | The parent dashboard can update as the learner answers, without a manual refresh. |
 
 The database is intentionally small and explainable:
 
 ```text
 app_settings   one row per family: learner profile, assignments, review schedule, settings
-questions      the approved question bank (subject, topic, skill, difficulty, options, answer)
-sessions       one row per practice / diagnostic / review session
-attempts       one row per answered question — the raw signal the mastery engine reads
+questions      approved questions: subject, topic, skill, difficulty, options, answer
+sessions       one row per practice, diagnostic, or review session
+attempts       one row per answered question—the raw evidence used by the mastery engine
 ```
 
-Because mastery is *computed* from the `attempts` log rather than stored as a frozen number,
-the mastery rules can evolve later without rewriting a learner's history.
+Because mastery is **computed from the attempts log** rather than stored only as a frozen score, the decision rules can evolve without rewriting the learner’s history.
 
 ---
 
 ## Implemented architecture
 
-The technologies are now fixed (the earlier draft left them open); this is what actually runs:
-
 ```text
 Content preparation
-  Lesson / video  →  NotebookLM (AI generation)  →  CSV  →  in-app validation & approval
+  Lesson / video → NotebookLM (AI generation) → CSV → in-app validation and approval
 
-Frontend  (this repository)
-  A single self-contained index.html — HTML, CSS, and vanilla JavaScript, no build step.
-  Child experience  → subject picker → adaptive quiz
-  Parent experience → dashboard, question bank, assignments
-  A framework-free mastery engine computes levels, mastery, weak skills, and decisions.
+Frontend (this repository)
+  Single self-contained index.html—HTML, CSS, and vanilla JavaScript; no build step
+  Learner experience → subject picker → adaptive quiz
+  Parent experience  → dashboard → question bank → assignments
+  Framework-free mastery engine → levels → mastery → weak skills → decisions
 
 Cloud (Supabase)
-  Auth (family login) · Postgres (questions/attempts/sessions/settings) · RLS (privacy) · Realtime (live)
+  Auth (family login) · Postgres (shared data) · RLS (privacy) · Realtime (live updates)
 
 Hosting
-  GitHub Pages serves the static app at a public URL. Updating = commit a new index.html.
+  GitHub Pages serves the static app at a public URL
 ```
 
-Deliberate architectural boundaries carried over from the original design:
+Deliberate architectural boundaries include:
 
-- the AI generation provider stays replaceable (NotebookLM is not baked in);
-- generated content is separated from *approved* content (nothing reaches a learner unreviewed);
-- assessment delivery is separated from mastery calculation;
-- the evidence behind each mastery decision is recorded;
-- parent/reviewer and learner permissions are distinct (a PIN guards the parent view);
-- mastery rules can change without rewriting attempt history.
+- The AI generation provider remains replaceable; NotebookLM is not embedded in the learning engine.
+- Generated content is separated from **approved** content, so nothing reaches a learner without review.
+- Assessment delivery is separated from mastery calculation.
+- The evidence behind each mastery decision is retained in the attempt history.
+- Parent/reviewer and learner access are distinct; a PIN guards the parent view.
+- Mastery rules can evolve without rewriting historical attempts.
 
 ---
 
@@ -143,9 +111,7 @@ Learner
                         └── Mastery
 ```
 
-For example: *Learner → Mathematics → Fractions → Comparing fractions → Foundation … Challenge.*
-The same structure supports English grammar, science concepts, and future subjects without
-redesigning the core engine.
+For example: *Learner → Mathematics → Fractions → Comparing fractions → Foundation … Challenge.* The same structure supports English grammar, science concepts, and future subjects without redesigning the core engine.
 
 ### Five difficulty levels
 
@@ -153,37 +119,28 @@ redesigning the core engine.
 |---:|---|---|
 | 1 | Foundation | Direct recognition, recall, and simple one-step application |
 | 2 | Basic | Familiar application with modest variation and growing independence |
-| 3 | Intermediate | Multi-step work, word problems, and combining related ideas |
-| 4 | Advanced | Harder reasoning, less obvious solution paths, more demanding application |
-| 5 | Challenge | Deep understanding through difficult multi-step or multi-part problems |
+| 3 | Intermediate | Multi-step work, word problems, and combinations of related ideas |
+| 4 | Advanced | Harder reasoning, less obvious solution paths, and more demanding application |
+| 5 | Challenge | Deep understanding demonstrated through difficult multi-step or multi-part problems |
 
-Question design increases *reasoning demand*, not just number size. Distractors are plausible
-and, where possible, reflect common learner mistakes — which can later support misconception
-detection as well as correctness scoring.
+Question design increases **reasoning demand**, not merely number size. Distractors are intended to be plausible and, where possible, reflect common learner mistakes. This creates a foundation for future misconception detection as well as correctness scoring.
 
 ---
 
 ## The adaptive engine
 
-The engine is a set of pure functions over the `attempts` log, so it is transparent and
-portable. It is subject-scoped: an English topic and a Maths topic never mix.
+The engine is implemented as a set of pure functions over the `attempts` log, keeping its decisions transparent and portable. Calculations are subject-scoped, so progress in an English topic never affects a Mathematics topic.
 
-- **Adaptive difficulty.** Five levels; promotion after sustained ~80% accuracy over a recent
-  window, regression when recent accuracy falls below ~60%.
-- **Mastery score.** A weighted blend of recent accuracy, difficulty achieved, consistency,
-  retention, and response confidence — tuned as product rules, not universal claims.
-- **Skill-aware analysis.** Accuracy is tracked per sub-skill, so a strong topic average can
-  never hide a weak sub-skill.
-- **Explainable decisions.** After a meaningful window, each topic gets one of three
-  plain-language recommendations, shown on the parent dashboard:
-  - **Promote** — evidence is sufficient; introduce the next difficulty.
-  - **Reinforce** — overall performance is promising, but a specific skill needs targeted
-    practice at the current level.
-  - **Remediate** — sustained difficulty; step down or rebuild a prerequisite.
-- **Spaced repetition.** Mastered topics return for review on widening intervals; poor review
-  performance shortens the interval.
+- **Adaptive difficulty:** five levels, with promotion after sustained accuracy of approximately 80% over a recent window and regression when recent accuracy falls below approximately 60%.
+- **Mastery score:** a weighted blend of recent accuracy, difficulty achieved, consistency, retention, and response confidence. These are configurable product rules, not universal educational claims.
+- **Skill-aware analysis:** accuracy is tracked by sub-skill so that a strong topic average cannot conceal a specific weakness.
+- **Explainable decisions:** after a meaningful evidence window, the engine gives one of three plain-language recommendations:
+  - **Promote** — evidence is sufficient to introduce the next difficulty level.
+  - **Reinforce** — overall performance is promising, but a specific skill needs targeted practice at the current level.
+  - **Remediate** — sustained difficulty indicates a need to step down or rebuild a prerequisite.
+- **Spaced repetition:** mastered topics return for review at widening intervals, while weak review performance shortens the interval.
 
-All thresholds live in one config block and are meant to be validated through real use.
+All thresholds are held in one configuration block and are intended to be refined through real-world use.
 
 ---
 
@@ -196,125 +153,139 @@ AI-assisted generation (currently NotebookLM)
       ↓
 Structured CSV
       ↓
-Parent validation & approval (in-app)
+Parent validation and approval (in-app)
       ↓
 Approved question bank (cloud)
       ↓
 Adaptive assessment
       ↓
-Attempt & sub-skill analysis
+Attempt and sub-skill analysis
       ↓
 Mastery decision (Promote / Reinforce / Remediate)
       ↓
-Parent dashboard & targeted intervention
+Parent dashboard and targeted intervention
 ```
 
-**Question CSV schema**
+### Question CSV schema
 
 ```csv
 subject,topic,skill,difficulty,question,option_a,option_b,option_c,option_d,answer,explanation
 ```
 
-The in-app importer validates structure before anything is saved (missing fields, invalid
-difficulty, bad answer letter, duplicates), then a human approves the batch. Only approved
-records enter the live bank.
+The in-app importer checks structure before saving, including missing fields, invalid difficulty values, invalid answer letters, and duplicates. A human then approves the batch. Only approved records enter the live question bank.
 
 ---
 
-## Using it
+## Using MasteryPath
 
-1. Open the live app and **create one family account** (or sign in).
-2. **Parent** area (PIN-guarded) → **Question Bank** → paste a NotebookLM CSV → **Validate** →
-   **Approve**. Set starting difficulty per topic under **Assignments**.
-3. The learner signs in on their own device with the same account, picks a **subject** and a
-   **topic**, and practises. Difficulty adapts automatically.
-4. The parent watches the per-subject **dashboard** update live and follows the
-   Promote / Reinforce / Remediate guidance.
+1. Open the [live app](https://ibkwilliams1.github.io/mastery-path/) and create one family account, or sign in.
+2. In the PIN-guarded **Parent** area, open **Question Bank**, paste a NotebookLM CSV, select **Validate**, and then **Approve**. Set the starting difficulty for each topic under **Assignments**.
+3. The learner signs in on their own device using the same family account, chooses a **subject** and **topic**, and practises. The difficulty adapts automatically.
+4. The parent follows the subject-level dashboard and uses the **Promote**, **Reinforce**, or **Remediate** guidance to support the learner.
 
 ---
 
-## Privacy & child safety
+## Privacy and child safety
 
-MasteryPath processes a child's educational data, so privacy is a core requirement, not a
-later feature.
+MasteryPath processes a child’s educational data, so privacy is a core requirement rather than a later feature.
 
-- Collect only the data needed to run the learning experience.
-- Parent-controlled account; learner and reviewer permissions are separated.
-- Row Level Security isolates every family's data at the database level.
-- Data is served over HTTPS; the public key exposes nothing without RLS-permitted auth.
-- No advertising, no public profiles, no chat.
-- No real learner data, credentials, or private lesson content is committed to this repository;
-  demonstration data is synthetic.
+- Only data needed to operate the learning experience is collected.
+- The account is parent-controlled, with learner and reviewer access separated.
+- Row Level Security isolates each family’s data at the database level.
+- Data is transmitted over HTTPS; the public Supabase key grants no unrestricted database access when RLS policies are correctly enforced.
+- The app contains no advertising, public profiles, or chat.
+- No real learner data, credentials, or private lesson content is committed to the repository; demonstration data is synthetic.
 
 ---
 
 ## Roadmap
 
 ### Phase 1 — Foundation
-- [x] Subject-neutral domain model (Learner → Subject → Topic → Skill → Difficulty)
-- [x] Five-level generation specification (subject-agnostic prompts)
+
+- [x] Subject-neutral domain model: Learner → Subject → Topic → Skill → Difficulty
+- [x] Five-level, subject-agnostic generation specification
 - [x] Question-bank CSV contract
 - [x] Import, validation, review, and approval workflow
-- [x] Math Mastery as the first subject module (plus English & Science)
+- [x] Math Mastery as the first subject module, followed by English and Science
 
 ### Phase 2 — Mastery engine
+
 - [x] Record attempts at topic, skill, and difficulty level
-- [x] Configurable promotion / regression criteria
+- [x] Configurable promotion and regression criteria
 - [x] Weak-skill detection
-- [x] Promote / Reinforce / Remediate decisions with explanations
-- [ ] Minimum-attempt & full sub-skill coverage gating (partial)
+- [x] Explainable Promote / Reinforce / Remediate decisions
+- [ ] Complete minimum-attempt and full sub-skill coverage gating
 - [ ] Persist decision history over time
 
 ### Phase 3 — Parent insight
+
 - [x] Decision-oriented parent dashboard
 - [x] Weak-skill and review-due highlighting
 - [x] Live monitoring across devices
-- [ ] Progress & mastery trends over time (charts)
-- [ ] Scheduled progress summaries (e.g. weekly email)
+- [ ] Progress and mastery trend charts
+- [ ] Scheduled progress summaries, such as a weekly email
 
 ### Phase 4 — Expansion
-- [x] Multi-subject support (add a subject just by importing questions)
-- [ ] Subject-specific question / response formats
+
+- [x] Multi-subject support through question-bank imports
+- [ ] Subject-specific question and response formats
 - [ ] Misconception detection from distractor patterns
-- [ ] Evaluate additional generation providers
+- [ ] Evaluation of additional generation providers
 
 ### Phase 5 — Product hardening
+
 - [ ] Validate mastery rules through real-world use
-- [ ] Accessibility & age-appropriate UX polish
-- [ ] Retention, backup, and recovery controls
-- [ ] Automated quality checks & monitoring
+- [ ] Improve accessibility and age-appropriate UX
+- [ ] Add retention, backup, and recovery controls
+- [ ] Add automated quality checks and monitoring
 
 ---
 
 ## Tech stack
 
-- **Frontend:** single-file HTML + CSS + vanilla JavaScript (no build step)
-- **Cloud:** Supabase — Postgres, Auth, Row Level Security, Realtime
+- **Frontend:** single-file HTML, CSS, and vanilla JavaScript; no build step
+- **Cloud:** Supabase—Postgres, Auth, Row Level Security, and Realtime
 - **Hosting:** GitHub Pages
-- **Content generation:** NotebookLM (external, replaceable) → reviewed CSV import
+- **Content generation:** NotebookLM as an external, replaceable tool feeding a reviewed CSV import
 
 ---
 
-## Portfolio significance
+## Engineering and career trajectory
 
-MasteryPath is more than a quiz app. It brings together applied AI-workflow design,
-human-in-the-loop content governance, a scalable domain and data model, adaptive decision
-logic, learning analytics with explainability, parent- and learner-centred design, and
-privacy-aware handling of children's data — deployed as a real, working product.
+MasteryPath is an education-focused product, not a petroleum or laboratory application. Its broader significance is the **transferable engineering approach** demonstrated by taking it from a personal need to a deployed system:
 
-> A real learning problem was translated into a data-driven system that converts validated
-> lesson content into adaptive assessments, identifies skill gaps, and advances a learner
-> based on evidence of mastery — reachable by a parent and child in different cities.
+```text
+Real operational problem
+  → product requirements
+  → domain and data model
+  → decision logic
+  → secure cloud-backed workflow
+  → working deployment
+  → evidence-led iteration
+```
+
+The project was created by an experienced petroleum laboratory professional and technical signatory progressing toward laboratory leadership while building capability in software, data engineering, cloud/DevOps, automation, and applied AI. MasteryPath provides practical evidence of that transition without claiming that an education product is an industrial solution.
+
+Specifically, the project demonstrates the ability to:
+
+- identify a real workflow constraint—in this case, supporting and monitoring learning across different locations;
+- translate that constraint into functional requirements for shared data, authentication, privacy, and live visibility;
+- design a reusable domain model rather than hard-code the product around its first subject;
+- turn educational policy into configurable, explainable decision logic;
+- combine AI-assisted preparation with human validation and clear system boundaries;
+- implement a persistent cloud-backed workflow and deploy a functioning product; and
+- refine rules and priorities from observed evidence rather than treating the first design as final.
+
+This is the same problem-solving pattern the creator intends to apply—within the limits of growing experience—to **digital laboratory systems, laboratory informatics, industrial data and automation, and technology-enabled operations**. In those environments, the subject matter and controls are different, but the engineering questions are related: how should data move, where should validation occur, which decisions can be automated, how should evidence remain traceable, and how can users see the information needed to act?
+
+MasteryPath therefore represents both a working education product and a portfolio case study in building dependable, human-centred digital workflows. It connects established laboratory discipline and operational judgment with an expanding capability to design and deliver software-enabled systems.
 
 ---
 
 ## Project status
 
-Live and in active development. Mathematics, English, and Science modules are working, backed
-by Supabase and deployed on GitHub Pages. Roadmap items and thresholds will be refined through
-real-world use.
+MasteryPath is live and in active development. Mathematics, English, and Science modules are working, backed by Supabase and deployed through GitHub Pages. Roadmap priorities and decision thresholds will continue to be refined through real-world use.
 
 ## License
 
-No license has been selected yet. Until a license file is added, all rights remain with the
-project owner.
+No license has been selected. Until a license file is added, all rights remain with the project owner.
