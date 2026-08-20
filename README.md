@@ -1,10 +1,12 @@
 # MasteryPath
 
-> An adaptive learning and mastery-assessment platform that turns lesson content into progressive, skill-aware practice—and helps a parent track real understanding from anywhere.
+> A deployed, cloud-backed adaptive learning platform that turns validated lesson content into progressive, skill-aware practice—and helps a parent monitor genuine understanding from anywhere.
 
 [**Open the live app**](https://ibkwilliams1.github.io/mastery-path/) · **Repository:** `mastery-path`
 
-MasteryPath is a subject-agnostic learning platform designed to help a learner move from first exposure to demonstrated mastery. It combines AI-assisted question-bank creation, human validation, adaptive assessment, skill-level progress tracking, and parent-facing insight in a single cloud-backed web app.
+MasteryPath is a working product built from a real remote-learning need. It combines AI-assisted question-bank creation, human validation, adaptive assessment, skill-level progress tracking, and parent-facing insight in a single subject-agnostic web application.
+
+From a portfolio perspective, the project demonstrates the complete journey from **problem discovery and requirements definition** through **data modelling, decision-engine design, cloud architecture, privacy controls, deployment, and evidence-led iteration**.
 
 It began with mathematics for one child, but its architecture is deliberately designed to expand across subjects:
 
@@ -15,6 +17,37 @@ MasteryPath
 ├── Science Mastery
 └── Future subject modules
 ```
+
+## Project at a glance
+
+| Area | Implementation |
+|---|---|
+| **Problem addressed** | Remote, evidence-based monitoring of a learner's progress across devices |
+| **Product model** | Learner → Subject → Topic → Skill → Difficulty → Attempt → Mastery |
+| **Decision engine** | Configurable Promote / Reinforce / Remediate recommendations |
+| **Cloud workflow** | Supabase Auth, Postgres, Row Level Security, and Realtime |
+| **AI boundary** | AI assists question creation; a human validates content before use |
+| **Delivery** | Static application deployed publicly through GitHub Pages |
+| **Current scope** | Mathematics, English, and Science, with room for additional subjects |
+
+## Product views
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="assets/masterypath-family-sign-in.png" alt="MasteryPath secure family sign-in screen" width="320"><br>
+      <strong>Shared family access</strong><br>
+      <sub>One authenticated account supports the parent and learner across devices.</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="assets/masterypath-question-bank.png" alt="MasteryPath parent question-bank workflow" width="320"><br>
+      <strong>Parent-controlled content workflow</strong><br>
+      <sub>The parent area manages validated content before it reaches the learner.</sub>
+    </td>
+  </tr>
+</table>
+
+The responsive interface separates learner practice from parent oversight while keeping both experiences connected to the same cloud-backed account.
 
 ---
 
@@ -252,7 +285,7 @@ MasteryPath processes a child’s educational data, so privacy is a core require
 
 ## Engineering and career trajectory
 
-MasteryPath is an education-focused product, not a petroleum or laboratory application. Its broader significance is the **transferable engineering approach** demonstrated by taking it from a personal need to a deployed system:
+MasteryPath is an education-focused product, not a petroleum or laboratory application. For recruiters and technical reviewers, its broader significance is the **transferable engineering approach** demonstrated by taking it from a personal need to a deployed system:
 
 ```text
 Real operational problem
@@ -264,7 +297,7 @@ Real operational problem
   → evidence-led iteration
 ```
 
-The project was created by an experienced petroleum laboratory professional and technical signatory progressing toward laboratory leadership while building capability in software, data engineering, cloud/DevOps, automation, and applied AI. MasteryPath provides practical evidence of that transition without claiming that an education product is an industrial solution.
+The project was created by an experienced petroleum laboratory professional and technical signatory progressing toward laboratory leadership while developing capability in software, data engineering, cloud/DevOps, automation, and applied AI. It provides tangible evidence of that progression without presenting an education product as an industrial solution or overstating the creator's current technology experience.
 
 Specifically, the project demonstrates the ability to:
 
@@ -278,7 +311,20 @@ Specifically, the project demonstrates the ability to:
 
 This is the same problem-solving pattern the creator intends to apply—within the limits of growing experience—to **digital laboratory systems, laboratory informatics, industrial data and automation, and technology-enabled operations**. In those environments, the subject matter and controls are different, but the engineering questions are related: how should data move, where should validation occur, which decisions can be automated, how should evidence remain traceable, and how can users see the information needed to act?
 
-MasteryPath therefore represents both a working education product and a portfolio case study in building dependable, human-centred digital workflows. It connects established laboratory discipline and operational judgment with an expanding capability to design and deliver software-enabled systems.
+### Transferable engineering evidence
+
+| Engineering behaviour | Evidence in MasteryPath |
+|---|---|
+| **Start from an operational need** | Remote support and visibility were treated as core requirements, not optional features. |
+| **Model the domain for change** | The original mathematics concept became a reusable learner/subject/topic/skill/difficulty model. |
+| **Design around traceable evidence** | Attempts remain the source history from which mastery and recommendations are calculated. |
+| **Separate automation from judgment** | AI-generated questions remain outside the approved bank until human validation. |
+| **Choose technology to meet requirements** | Supabase was introduced when the local-storage prototype could not support shared, multi-device workflows. |
+| **Deliver and iterate** | The application is publicly deployed, used as a working product, and refined through observed outcomes. |
+
+MasteryPath therefore serves as both a working education product and a portfolio case study in dependable, human-centred digital workflow design. It connects established laboratory discipline and operational judgment with a growing ability to design and deliver software-enabled systems.
+
+The intended career direction is toward work where this combination is valuable: **digital laboratory systems, laboratory informatics, industrial data and automation, and technology-enabled operations**. The project does not claim mastery of those fields; it shows the creator actively building the underlying software, data, cloud, automation, and systems-thinking capabilities needed to contribute to them.
 
 ---
 
