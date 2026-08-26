@@ -61,10 +61,14 @@
   .quizhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;color:var(--muted);font-weight:700}
   .progress{height:12px;background:var(--line);border-radius:999px;overflow:hidden;margin-bottom:18px}
   .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand-2));transition:width .3s}
-  .qtext{font-size:1.5rem;font-weight:800;text-align:center;margin:10px 0 22px;min-height:2.2em;display:grid;place-items:center}
+  .qtext{font-size:1.5rem;font-weight:800;text-align:center;margin:10px 0 22px;min-height:2.2em;display:block}
   .options{display:grid;gap:14px;grid-template-columns:1fr 1fr}
   @media(max-width:520px){.options{grid-template-columns:1fr}.qtext{font-size:1.3rem}}
   .opt{background:var(--panel);border:2px solid var(--line);border-radius:var(--radius);padding:20px;font-size:1.35rem;font-weight:800;box-shadow:var(--shadow);transition:.12s;min-height:74px}
+  .tally-mark{display:inline-flex;align-items:center;vertical-align:-.32em;margin:0 .12em;color:currentColor}
+  .tally-mark svg{display:block;height:1.55em;width:auto;overflow:visible}
+  .tally-mark line{stroke:currentColor;stroke-width:2.8;stroke-linecap:round}
+  .opt .tally-mark{font-size:1.1em}
   .opt:active{transform:scale(.97)}
   .opt.correct{border-color:var(--good);background:var(--good-soft);color:var(--good)}
   .opt.wrong{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
@@ -428,6 +432,30 @@ function gamification(sid){
 const $=s=>document.querySelector(s);
 const main=()=>document.getElementById('main');
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function tallyMarkup(count){
+  const n=Number(count); if(!Number.isInteger(n)||n<1||n>100) return '';
+  const groups=Math.floor(n/5), remainder=n%5, groupWidth=34, tickGap=7;
+  const width=Math.max(12,groups*groupWidth+remainder*tickGap+2); let marks='';
+  for(let g=0;g<groups;g++){ const x=g*groupWidth;
+    for(let i=0;i<4;i++){ const px=x+4+i*6; marks+=`<line x1="${px}" y1="5" x2="${px}" y2="25"></line>`; }
+    marks+=`<line x1="${x+1}" y1="25" x2="${x+25}" y2="5"></line>`;
+  }
+  const start=groups*groupWidth;
+  for(let i=0;i<remainder;i++){ const px=start+4+i*tickGap; marks+=`<line x1="${px}" y1="5" x2="${px}" y2="25"></line>`; }
+  return `<span class="tally-mark" role="img" aria-label="${n} tally mark${n===1?'':'s'}"><svg width="${width}" height="30" viewBox="0 0 ${width} 30" aria-hidden="true" focusable="false">${marks}</svg></span>`;
+}
+function legacyTallyCount(notation){
+  const compact=notation.replace(/\s+/g,'');
+  if(!/^(?:\|{4}\/)+\|{0,4}$/.test(compact)&&!/^\|{1,4}$/.test(compact)) return 0;
+  const groups=(compact.match(/\|{4}\//g)||[]).length;
+  return groups*5+compact.replace(/(?:\|{4}\/)/g,'').length;
+}
+function renderLearningText(value){
+  let safe=esc(value);
+  safe=safe.replace(/\[TALLY:(\d{1,3})\]/gi,(match,count)=>tallyMarkup(Number(count))||match);
+  return safe.replace(/(^|[^|])((?:\|{4}\/[ \t]+)+(?:\|{4}\/|\|{1,4})|(?:\|{4}\/)+\|{0,4}|\|{1,4})(?=$|[^|/])/g,
+    (match,prefix,notation)=>prefix+(tallyMarkup(legacyTallyCount(notation))||notation));
+}
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2400); }
 function statusClass(st){ return 'st-'+st.toLowerCase().replace(/\s+/g,''); }
 function colorFor(s){ return s>=85?'var(--good)':s>=60?'var(--brand)':s>=40?'var(--warn)':'var(--bad)'; }
@@ -540,11 +568,11 @@ function backToSubjects(){ STATE.currentSubject=null; saveLocal(); renderChild()
 function renderQuiz(){
   const q=SESSION.questions[SESSION.index]; if(!q){ finishSession(); return; }
   const num=SESSION.index+1, total=SESSION.questions.length, pct=Math.round((SESSION.index/total)*100);
-  const opts=['A','B','C','D'].map(L=>`<button class="opt" data-letter="${L}" onclick="answerQuestion('${L}')">${esc(q['option_'+L.toLowerCase()])}</button>`).join('');
+  const opts=['A','B','C','D'].map(L=>`<button class="opt" data-letter="${L}" onclick="answerQuestion('${L}')">${renderLearningText(q['option_'+L.toLowerCase()])}</button>`).join('');
   main().innerHTML=`<div class="screen">
     <div class="quizhead"><span>${SESSION.type==='diagnostic'?'🎯 Test Me — '+esc(SESSION.subject):esc(SESSION.subject)+' · '+esc(SESSION.topic)}</span><span>Q ${num} of ${total}</span></div>
     <div class="progress"><span style="width:${pct}%"></span></div>
-    <div class="card"><div class="qtext">${esc(q.question_text)}</div><div class="options" id="options">${opts}</div>
+    <div class="card"><div class="qtext">${renderLearningText(q.question_text)}</div><div class="options" id="options">${opts}</div>
       <div class="feedback" id="feedback"></div><button class="btn hidden" id="nextBtn" onclick="nextQuestion()">Next →</button></div>
     <button class="btn gray sm" onclick="quitSession()" style="width:auto">Exit</button></div>`;
 }
@@ -552,7 +580,7 @@ function showAnswerFeedback(q,letter,correct){
   document.querySelectorAll('#options .opt').forEach(b=>{ const L=b.dataset.letter; b.disabled=true;
     if(L===q.correct_answer) b.classList.add('correct'); else if(L===letter) b.classList.add('wrong'); else b.classList.add('dim'); });
   const fb=$('#feedback'); fb.className='feedback show '+(correct?'ok':'no');
-  fb.innerHTML=(correct?'Correct! 🎉':"Not quite. Let's look at this one.")+`<div class="expl">${esc(q.explanation||'')}</div>`;
+  fb.innerHTML=(correct?'Correct! 🎉':"Not quite. Let's look at this one.")+`<div class="expl">${renderLearningText(q.explanation||'')}</div>`;
   const nb=$('#nextBtn'); nb.classList.remove('hidden'); nb.textContent=(SESSION.index+1>=SESSION.questions.length)?'See my results →':'Next →';
 }
 function quitSession(){ SESSION=null; render(); }
@@ -672,7 +700,7 @@ function parentBank(){
   }).join('') : `<div class="empty card">No questions yet.<div style="margin-top:10px"><button class="btn sm ghost" onclick="seedSample()">Load sample questions (3 subjects)</button></div></div>`;
   return `${groups}
   <div class="card"><h3>Import questions</h3>
-    <p class="note">Paste CSV or JSON. Header: <code>subject,topic,skill,difficulty,question,option_a,option_b,option_c,option_d,answer,explanation</code>. The <b>subject</b> column decides which subject it lands in (e.g. Mathematics, English, Science).</p>
+    <p class="note">Paste CSV or JSON. Header: <code>subject,topic,skill,difficulty,question,option_a,option_b,option_c,option_d,answer,explanation</code>. The <b>subject</b> column decides which subject it lands in (e.g. Mathematics, English, Science). For tally marks, write <code>[TALLY:7]</code>; existing forms such as <code>||||/ ||</code> are also supported.</p>
     <div class="field"><textarea id="importText" placeholder="Paste CSV or JSON here..."></textarea></div>
     <div class="btnrow"><button class="btn sm" onclick="validateImport()">Validate</button>
       <button class="btn sm gray" onclick="loadSampleImport()">Load a sample row</button>
@@ -714,7 +742,7 @@ function validateImport(){
   IMPORT_PREVIEW={valid,errors}; renderImportResult();
 }
 function renderImportResult(){ const {valid,errors}=IMPORT_PREVIEW;
-  const pr=valid.slice(0,8).map(r=>`<tr><td>${esc(r.subject)}</td><td>${esc(r.topic)}</td><td>${esc(r.skill)}</td><td class="num">${r.difficulty}</td><td>${esc(r.question_text)}</td><td>${esc(r.correct_answer)}</td></tr>`).join('');
+  const pr=valid.slice(0,8).map(r=>`<tr><td>${esc(r.subject)}</td><td>${esc(r.topic)}</td><td>${esc(r.skill)}</td><td class="num">${r.difficulty}</td><td>${renderLearningText(r.question_text)}</td><td>${esc(r.correct_answer)}</td></tr>`).join('');
   const eb=errors.length?`<div class="errlist"><b>${errors.length} row(s) rejected:</b><br>${errors.slice(0,8).map(e=>`Row ${e.row}: ${e.problems.join(', ')}`).join('<br>')}${errors.length>8?'<br>…':''}</div>`:'';
   $('#importResult').innerHTML=`<div class="between" style="margin-top:12px"><span class="${valid.length?'valid-ok':'valid-bad'}">✓ ${valid.length} valid</span><span class="${errors.length?'valid-bad':'muted'}">✗ ${errors.length} with errors</span></div>
     ${valid.length?`<table style="margin-top:8px"><thead><tr><th>Subject</th><th>Topic</th><th>Skill</th><th class="num">Diff</th><th>Question</th><th>Ans</th></tr></thead><tbody>${pr}</tbody></table>${valid.length>8?`<div class="note">…and ${valid.length-8} more</div>`:''}`:''}
