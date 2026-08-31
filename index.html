@@ -66,6 +66,9 @@
   .options{display:grid;gap:14px;grid-template-columns:1fr 1fr}
   @media(max-width:520px){.options{grid-template-columns:1fr}.qtext{font-size:1.3rem}}
   .opt{background:var(--panel);border:2px solid var(--line);border-radius:var(--radius);padding:20px;font-size:1.35rem;font-weight:800;box-shadow:var(--shadow);transition:.12s;min-height:74px}
+  .opt.selected{border-color:var(--brand);background:var(--brand-soft);color:var(--brand);box-shadow:0 0 0 4px rgba(79,70,229,.14)}
+  .opt.selected::after{content:'Selected';display:block;margin-top:5px;font-size:.72rem;letter-spacing:.3px;text-transform:uppercase}
+  .opt:focus-visible{outline:3px solid var(--brand-2);outline-offset:3px}
   .tally-mark{display:inline-flex;align-items:center;vertical-align:-.32em;margin:0 .12em;color:currentColor}
   .tally-mark svg{display:block;height:1.55em;width:auto;overflow:visible}
   .tally-mark line{stroke:currentColor;stroke-width:2.8;stroke-linecap:round}
@@ -74,6 +77,9 @@
   .opt.correct{border-color:var(--good);background:var(--good-soft);color:var(--good)}
   .opt.wrong{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
   .opt.dim{opacity:.5}
+  .answer-confirm{margin-top:18px;padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff;text-align:center}
+  .selection-note{color:var(--muted);font-size:.9rem;font-weight:700}
+  .answer-confirm .btn{margin-top:10px}
   .feedback{margin-top:18px;border-radius:var(--radius);padding:16px 18px;font-weight:700;display:none}
   .feedback.show{display:block;animation:pop .3s}
   @keyframes pop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
@@ -390,7 +396,7 @@ function startSession(subject,topic,type='practice',count){
   const sid=STATE.activeStudentId, n=count||STATE.settings.questionsPerSession;
   const qs=ENGINE.selectQuestions(sid,subject,topic,n);
   if(!qs.length){ toast('No questions for this topic yet'); return; }
-  SESSION={id:'sess_'+Date.now()+'_'+Math.floor(performance.now()), subject, topic, type, questions:qs, index:0, correct:0, startedAt:Date.now(), qStart:Date.now(), answered:false};
+  SESSION={id:'sess_'+Date.now()+'_'+Math.floor(performance.now()), subject, topic, type, questions:qs, index:0, correct:0, startedAt:Date.now(), qStart:Date.now(), answered:false, selectedLetter:null};
   renderQuiz();
 }
 function startDiagnostic(subject){
@@ -400,18 +406,18 @@ function startDiagnostic(subject){
   const qs=[]; topics.forEach(t=>ENGINE.selectQuestions(sid,subject,t,2).forEach(q=>qs.push(q)));
   for(let i=qs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[qs[i],qs[j]]=[qs[j],qs[i]];}
   if(!qs.length){ toast('Add some questions first'); return; }
-  SESSION={id:'sess_'+Date.now()+'_'+Math.floor(performance.now()), subject, topic:'Diagnostic', type:'diagnostic', questions:qs, index:0, correct:0, startedAt:Date.now(), qStart:Date.now(), answered:false};
+  SESSION={id:'sess_'+Date.now()+'_'+Math.floor(performance.now()), subject, topic:'Diagnostic', type:'diagnostic', questions:qs, index:0, correct:0, startedAt:Date.now(), qStart:Date.now(), answered:false, selectedLetter:null};
   renderQuiz();
 }
 async function answerQuestion(letter){
-  if(SESSION.answered) return; SESSION.answered=true;
+  if(!SESSION||SESSION.answered||!['A','B','C','D'].includes(letter)) return; SESSION.answered=true;
   const q=SESSION.questions[SESSION.index], correct=letter===q.correct_answer; if(correct) SESSION.correct++;
   const a={ id:'att_'+Date.now()+'_'+SESSION.index+'_'+Math.floor(performance.now()), studentId:STATE.activeStudentId, sessionId:SESSION.id,
     subject:q.subject, questionId:q.question_id, topic:q.topic, skill:q.skill, difficulty:q.difficulty, selected:letter, correct, responseMs:Date.now()-SESSION.qStart, at:Date.now() };
   STATE.attempts.push(a); showAnswerFeedback(q,letter,correct); dbInsertAttempt(a);
 }
 function nextQuestion(){ SESSION.index++; if(SESSION.index>=SESSION.questions.length){ finishSession(); return; }
-  SESSION.answered=false; SESSION.qStart=Date.now(); renderQuiz(); }
+  SESSION.answered=false; SESSION.selectedLetter=null; SESSION.qStart=Date.now(); renderQuiz(); }
 function finishSession(){
   const sid=STATE.activeStudentId, total=SESSION.questions.length;
   const s={ id:SESSION.id, studentId:sid, subject:SESSION.subject, topic:SESSION.topic, type:SESSION.type, startedAt:SESSION.startedAt, completedAt:Date.now(), correct:SESSION.correct, total };
@@ -569,17 +575,35 @@ function backToSubjects(){ STATE.currentSubject=null; saveLocal(); renderChild()
 function renderQuiz(){
   const q=SESSION.questions[SESSION.index]; if(!q){ finishSession(); return; }
   const num=SESSION.index+1, total=SESSION.questions.length, pct=Math.round((SESSION.index/total)*100);
-  const opts=['A','B','C','D'].map(L=>`<button class="opt" data-letter="${L}" onclick="answerQuestion('${L}')">${renderLearningText(q['option_'+L.toLowerCase()])}</button>`).join('');
+  const opts=['A','B','C','D'].map(L=>{ const selected=SESSION.selectedLetter===L;
+    return `<button type="button" class="opt${selected?' selected':''}" data-letter="${L}" aria-pressed="${selected?'true':'false'}" onclick="selectAnswer('${L}')">${renderLearningText(q['option_'+L.toLowerCase()])}</button>`; }).join('');
+  const hasSelection=!!SESSION.selectedLetter;
   main().innerHTML=`<div class="screen">
     <div class="quizhead"><span>${SESSION.type==='diagnostic'?'🎯 Test Me — '+esc(SESSION.subject):esc(SESSION.subject)+' · '+esc(SESSION.topic)}</span><span>Q ${num} of ${total}</span></div>
     <div class="progress"><span style="width:${pct}%"></span></div>
     <div class="card"><div class="qtext">${renderLearningText(q.question_text)}</div><div class="options" id="options">${opts}</div>
+      <div class="answer-confirm" id="answerConfirm"><div class="selection-note" id="selectionNote">${hasSelection?'Your choice is highlighted. Change it if needed, then confirm.':'Tap one answer. You can change it before you confirm.'}</div>
+        <button type="button" class="btn" id="confirmBtn" onclick="confirmSelectedAnswer()" ${hasSelection?'':'disabled'}>${hasSelection?'OK - Confirm final answer':'Choose an answer first'}</button></div>
       <div class="feedback" id="feedback"></div><button class="btn hidden" id="nextBtn" onclick="nextQuestion()">Next →</button></div>
     <button class="btn gray sm" onclick="quitSession()" style="width:auto">Exit</button></div>`;
 }
+function selectAnswer(letter){
+  if(!SESSION||SESSION.answered||!['A','B','C','D'].includes(letter)) return;
+  SESSION.selectedLetter=letter;
+  document.querySelectorAll('#options .opt').forEach(b=>{ const selected=b.dataset.letter===letter;
+    b.classList.toggle('selected',selected); b.setAttribute('aria-pressed',selected?'true':'false'); });
+  const note=$('#selectionNote'); if(note) note.textContent='Your choice is highlighted. Change it if needed, then confirm.';
+  const confirm=$('#confirmBtn'); if(confirm){ confirm.disabled=false; confirm.textContent='OK - Confirm final answer'; }
+}
+function confirmSelectedAnswer(){
+  if(!SESSION||SESSION.answered||!SESSION.selectedLetter) return;
+  answerQuestion(SESSION.selectedLetter);
+}
 function showAnswerFeedback(q,letter,correct){
   document.querySelectorAll('#options .opt').forEach(b=>{ const L=b.dataset.letter; b.disabled=true;
+    b.classList.remove('selected'); b.setAttribute('aria-pressed','false');
     if(L===q.correct_answer) b.classList.add('correct'); else if(L===letter) b.classList.add('wrong'); else b.classList.add('dim'); });
+  const confirm=$('#answerConfirm'); if(confirm) confirm.classList.add('hidden');
   const fb=$('#feedback'); fb.className='feedback show '+(correct?'ok':'no');
   fb.innerHTML=(correct?'Correct! 🎉':"Not quite. Let's look at this one.")+`<div class="expl">${renderLearningText(q.explanation||'')}</div>`;
   const nb=$('#nextBtn'); nb.classList.remove('hidden'); nb.textContent=(SESSION.index+1>=SESSION.questions.length)?'See my results →':'Next →';
