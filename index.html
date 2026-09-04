@@ -97,9 +97,17 @@
   .celebrate .big{font-size:3.4rem}
   .stars{font-size:2rem;letter-spacing:6px;color:var(--star)}
   .statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
+  .statgrid.progress-summary{grid-template-columns:repeat(auto-fit,minmax(135px,1fr))}
   .stat{background:var(--brand-soft);border-radius:14px;padding:12px;text-align:center}
   .stat b{display:block;font-size:1.5rem}
   .stat span{font-size:.75rem;color:var(--muted);font-weight:700}
+  .daily-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:20px 0 8px}
+  .daily-heading h4{margin:0}
+  .daily-heading span{color:var(--muted);font-size:.78rem;font-weight:700}
+  .table-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .daily-table{min-width:720px}
+  .level-list{display:flex;gap:5px;flex-wrap:wrap}
+  .level-list .pill{white-space:nowrap}
   .badges{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px}
   .badge{background:var(--warn-soft);border-radius:14px;padding:8px 12px;font-weight:800;font-size:.85rem;color:var(--warn)}
   table{width:100%;border-collapse:collapse;font-size:.9rem}
@@ -331,7 +339,10 @@ const ENGINE = {
     return r.filter(a=>a.correct&&a.responseMs&&a.responseMs<CONFIG.fastAnswerMs).length/r.length; },
   assignStart(sid,subj,topic){ return STATE.assignments?.[sid]?.[subj]?.[topic]?.startLevel || 1; },
   currentLevel(sid,subj,topic){
-    const start=this.assignStart(sid,subj,topic); const list=this.topicAttempts(sid,subj,topic);
+    return this.levelFromAttempts(sid,subj,topic,this.topicAttempts(sid,subj,topic));
+  },
+  levelFromAttempts(sid,subj,topic,list){
+    const start=this.assignStart(sid,subj,topic);
     let level=Math.max(start,this._settled(list,start));
     const reg=list.slice(-CONFIG.regress.window);
     if(reg.length>=CONFIG.regress.window && this.accuracy(reg)<CONFIG.regress.accuracy) level=Math.max(1,level-1);
@@ -339,9 +350,12 @@ const ENGINE = {
   },
   _settled(list,start){ let level=start,w=[]; for(const a of list){ w.push(a.correct); if(w.length>CONFIG.promote.window) w.shift();
     const acc=w.filter(Boolean).length/w.length; if(w.length>=CONFIG.promote.window && acc>=CONFIG.promote.accuracy && level<5){ level++; w=[]; } } return level; },
-  masteryScore(sid,subj,topic){ const list=this.topicAttempts(sid,subj,topic); if(!list.length) return 0;
-    const r=list.slice(-CONFIG.recentWindow), w=CONFIG.weights, level=this.currentLevel(sid,subj,topic);
-    return Math.round((w.accuracy*this.accuracy(r)+w.difficulty*(level/5)+w.consistency*this.consistency(list)+w.retention*this.retention(list)+w.confidence*this.confidence(list))*100); },
+  retentionAt(l,asOf){ const d=asOf-86400000, older=l.filter(a=>a.at<d), rev=new Set(STATE.sessions.filter(s=>s.type==='review'&&(s.completedAt||s.startedAt||0)<=asOf).map(s=>s.id));
+    const rv=l.filter(a=>rev.has(a.sessionId)); const pool=rv.length?rv:(older.length?older:l); return this.accuracy(pool); },
+  masteryScoreFor(sid,subj,topic,list,asOf=Date.now()){ if(!list.length) return 0;
+    const r=list.slice(-CONFIG.recentWindow), w=CONFIG.weights, level=this.levelFromAttempts(sid,subj,topic,list);
+    return Math.round((w.accuracy*this.accuracy(r)+w.difficulty*(level/5)+w.consistency*this.consistency(list)+w.retention*this.retentionAt(list,asOf)+w.confidence*this.confidence(list))*100); },
+  masteryScore(sid,subj,topic){ return this.masteryScoreFor(sid,subj,topic,this.topicAttempts(sid,subj,topic)); },
   status(sid,subj,topic){ const list=this.topicAttempts(sid,subj,topic); if(!list.length) return 'Not Started';
     const score=this.masteryScore(sid,subj,topic), level=this.currentLevel(sid,subj,topic), acc=Math.round(this.accuracy(list.slice(-CONFIG.recentWindow))*100), due=this.reviewDue(sid,subj,topic);
     const mastered=level>=CONFIG.mastery.minLevel && score>=CONFIG.mastery.minScore && acc>=CONFIG.mastery.minAccuracy;
@@ -696,6 +710,24 @@ function recentSessionsCard(sid,subject){ const ss=STATE.sessions.filter(s=>s.st
   const rows=ss.map(s=>`<tr><td>${new Date(s.completedAt||s.startedAt).toLocaleString()}</td><td>${esc(s.topic)}</td><td><span class="chip">${esc(s.type)}</span></td><td class="num">${s.correct}/${s.total}</td></tr>`).join('');
   return `<div class="card"><h3>Recent sessions</h3><table><thead><tr><th>When</th><th>Topic</th><th>Type</th><th class="num">Score</th></tr></thead><tbody>${rows}</tbody></table></div>`; }
 
+function localDayKey(timestamp){ const d=new Date(timestamp), pad=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function formatProgressDay(timestamp){ return new Date(timestamp).toLocaleDateString(undefined,{weekday:'short',year:'numeric',month:'short',day:'numeric'}); }
+function dailyTopicProgress(sid,subject,topic,attempts){
+  const sorted=[...attempts].sort((a,b)=>(a.at||0)-(b.at||0)), groups=[], byDay=new Map();
+  sorted.forEach(a=>{ const key=localDayKey(a.at); let day=byDay.get(key);
+    if(!day){ day={key,items:[]}; byDay.set(key,day); groups.push(day); } day.items.push(a); });
+  let cumulative=[];
+  return groups.map(day=>{ cumulative=cumulative.concat(day.items); const levelCounts={};
+    day.items.forEach(a=>{ const level=Math.min(5,Math.max(1,Number(a.difficulty)||1)); levelCounts[level]=(levelCounts[level]||0)+1; });
+    const last=day.items[day.items.length-1], correct=day.items.filter(a=>a.correct).length;
+    return { key:day.key, lastAt:last.at, attempts:day.items.length, accuracy:Math.round(correct/day.items.length*100),
+      attemptedLevels:Object.entries(levelCounts).map(([level,count])=>({level:Number(level),count})),
+      adaptiveLevel:ENGINE.levelFromAttempts(sid,subject,topic,cumulative),
+      mastery:ENGINE.masteryScoreFor(sid,subject,topic,cumulative,last.at) }; });
+}
+function attemptedLevelPills(levels){ return levels.map(x=>`<span class="pill lv lvl-${x.level}">Lv ${x.level} ${esc(LEVEL_NAMES[x.level])} (${x.count})</span>`).join(''); }
+
 function parentProgress(){
   const sid=STATE.activeStudentId, subject=STATE.parentSubject;
   if(!subject) return `<div class="empty">No subjects yet.</div>`;
@@ -703,11 +735,18 @@ function parentProgress(){
   if(!studied.length) return `<div class="empty">No practice in ${esc(subject)} yet. Switch to the Child view and answer a few questions.</div>`;
   return studied.map(topic=>{ const skills=ENGINE.skillStats(sid,subject,topic), score=ENGINE.masteryScore(sid,subject,topic), level=ENGINE.currentLevel(sid,subject,topic), st=ENGINE.status(sid,subject,topic), attempts=ENGINE.topicAttempts(sid,subject,topic), dec=ENGINE.decision(sid,subject,topic);
     const avg=Math.round(attempts.reduce((a,b)=>a+(b.responseMs||0),0)/attempts.length/1000*10)/10;
+    const ordered=[...attempts].sort((a,b)=>(a.at||0)-(b.at||0)), latestDifficulty=Math.min(5,Math.max(1,Number(ordered[ordered.length-1].difficulty)||1));
+    const highestDifficulty=Math.max(...ordered.map(a=>Math.min(5,Math.max(1,Number(a.difficulty)||1))));
+    const daily=dailyTopicProgress(sid,subject,topic,ordered).reverse();
     const sr=skills.map(s=>`<tr><td>${esc(s.skill)}</td><td class="num">${s.attempted}</td><td><div class="flex"><div class="minibar"><span style="width:${s.accuracy}%;background:${colorFor(s.accuracy)}"></span></div>${s.accuracy}%</div></td></tr>`).join('');
+    const dr=daily.map(d=>`<tr><td>${formatProgressDay(d.lastAt)}</td><td class="num">${d.attempts}</td><td><div class="level-list">${attemptedLevelPills(d.attemptedLevels)}</div></td><td class="num">${d.accuracy}%</td><td class="num">${d.mastery}%</td><td>Lv ${d.adaptiveLevel} ${esc(LEVEL_NAMES[d.adaptiveLevel])}</td></tr>`).join('');
     return `<div class="card"><div class="between"><h3 style="margin:0">${esc(topic)}</h3><span class="pill ${statusClass(st)}">${st}</span></div>
-      <div class="statgrid"><div class="stat"><b>${score}%</b><span>Mastery</span></div><div class="stat"><b>Lv ${level}</b><span>Difficulty</span></div><div class="stat"><b>${avg}s</b><span>Avg time</span></div></div>
+      <div class="statgrid progress-summary"><div class="stat"><b>${score}%</b><span>Current mastery</span></div><div class="stat"><b>Lv ${level}</b><span>Current adaptive level</span></div><div class="stat"><b>Lv ${latestDifficulty}</b><span>Latest attempted level</span></div><div class="stat"><b>Lv ${highestDifficulty}</b><span>Highest attempted level</span></div><div class="stat"><b>${attempts.length}</b><span>Total attempts</span></div><div class="stat"><b>${avg}s</b><span>Average time</span></div></div>
       <div class="note" style="margin-bottom:8px"><span class="pill ${dec.cls}">${dec.kind}</span> ${esc(dec.reason)}</div>
-      <table><thead><tr><th>Skill</th><th class="num">Qs</th><th>Accuracy</th></tr></thead><tbody>${sr}</tbody></table></div>`; }).join('');
+      <table><thead><tr><th>Skill</th><th class="num">Attempts</th><th>Accuracy</th></tr></thead><tbody>${sr}</tbody></table>
+      <div class="daily-heading"><h4>Daily topic activity</h4><span>Newest active day first</span></div>
+      <div class="table-scroll"><table class="daily-table"><thead><tr><th>Date</th><th class="num">Attempts</th><th>Levels attempted</th><th class="num">Daily accuracy</th><th class="num">Mastery after day</th><th>Adaptive level after day</th></tr></thead><tbody>${dr}</tbody></table></div>
+      <div class="note" style="margin-top:10px"><b>Current adaptive level</b> is what the engine recommends next. <b>Levels attempted</b> are the actual difficulties stamped on that day's answered questions. Mastery after day is recalculated from the evidence available at the end of that day.</div></div>`; }).join('');
 }
 
 /* ---------- Question bank + import ---------- */

@@ -167,6 +167,7 @@ The engine is implemented as a set of pure functions over the `attempts` log, ke
 - **Adaptive difficulty:** five levels, with promotion after sustained accuracy of approximately 80% over a recent window and regression when recent accuracy falls below approximately 60%.
 - **Mastery score:** a weighted blend of recent accuracy, difficulty achieved, consistency, retention, and response confidence. These are configurable product rules, not universal educational claims.
 - **Skill-aware analysis:** accuracy is tracked by sub-skill so that a strong topic average cannot conceal a specific weakness.
+- **Daily progression evidence:** the parent view groups attempts by topic and day, showing the actual question levels attempted, daily accuracy, the adaptive level reached after each day, and a mastery snapshot based on the evidence available at that point.
 - **Explainable decisions:** after a meaningful evidence window, the engine gives one of three plain-language recommendations:
   - **Promote** — evidence is sufficient to introduce the next difficulty level.
   - **Reinforce** — overall performance is promising, but a specific skill needs targeted practice at the current level.
@@ -214,7 +215,7 @@ The in-app importer checks structure before saving, including missing fields, in
 1. Open the [live app](https://ibkwilliams1.github.io/mastery-path/) and create one family account, or sign in.
 2. In the PIN-guarded **Parent** area, open **Question Bank**, paste a NotebookLM CSV, select **Validate**, and then **Approve**. Set the starting difficulty for each topic under **Assignments**.
 3. The learner signs in on their own device using the same family account, chooses a **subject** and **topic**, and practises. The difficulty adapts automatically.
-4. The parent follows the subject-level dashboard and uses the **Promote**, **Reinforce**, or **Remediate** guidance to support the learner.
+4. The parent follows the subject-level dashboard and the **Student Progress** daily activity table to see whether the learner is moving toward more advanced question levels, then uses the **Promote**, **Reinforce**, or **Remediate** guidance to support the learner.
 
 ---
 
@@ -255,6 +256,7 @@ MasteryPath processes a child’s educational data, so privacy is a core require
 - [x] Decision-oriented parent dashboard
 - [x] Weak-skill and review-due highlighting
 - [x] Live monitoring across devices
+- [x] Daily attempts, attempted difficulty, adaptive-level, and mastery snapshots by topic
 - [ ] Progress and mastery trend charts
 - [ ] Scheduled progress summaries, such as a weekly email
 
