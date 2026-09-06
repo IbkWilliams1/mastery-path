@@ -3,9 +3,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<meta name="theme-color" content="#4f46e5" />
-<title>MasteryPath — Adaptive Learning</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#008b8f" />
+<title>Parent Workspace — Mastery Path</title>
 <style>
   :root{
     --bg:#f4f6fb; --panel:#ffffff; --ink:#1f2540; --muted:#5b6480; --line:#e6e9f2;
@@ -150,15 +150,16 @@
   code{background:#eef0ff;padding:2px 6px;border-radius:6px;font-size:.82em}
   pre{background:#0f1424;color:#e8ecff;padding:14px;border-radius:12px;overflow:auto;font-size:.8rem}
 </style>
+<link rel="stylesheet" href="./parent-theme.css" />
 </head>
 <body>
 <div class="app">
   <header class="topbar" id="topbar">
-    <div class="logo"><span class="mark">✦</span> MasteryPath</div>
+    <div class="logo"><span class="mark" aria-hidden="true">⌁</span> Mastery Path</div>
     <div class="spacer"></div>
     <div id="topbarRight"></div>
   </header>
-  <a href="./" style="display:block;padding:16px">Back to Math Explorer</a><main id="main"></main>
+  <a href="./" class="explorer-return">← Back to Math Explorer</a><main id="main"></main>
   <footer>MasteryPath · adaptive mastery across subjects · your data is private to your account</footer>
 </div>
 <div class="toast" id="toast"></div>
@@ -663,11 +664,10 @@ function renderParent(){
   const subjBar = showSubjBar ? `<div class="subjchips">${activeSubjects().map(s=>`<button class="${s.name===STATE.parentSubject?'active':''}" onclick="setParentSubject('${jsq(s.name)}')">${s.emoji} ${esc(s.name)}</button>`).join('')}</div>` : '';
   const learner=(STATE.students[0]||{}).name||'your child';
   main().innerHTML=`<div class="screen">
-    <div class="between"><h1>Parent Dashboard</h1><button class="btn sm gray" onclick="refreshData()">↻ Refresh</button></div>
-    <p class="sub">Track mastery, spot weak skills, manage the question bank. Updates live as ${esc(learner)} practises.</p>
-    <div class="tabs">${tabs.map(([k,l])=>`<button class="${k===PARENT_TAB?'active':''}" onclick="setParentTab('${k}')">${l}</button>`).join('')}</div>
+    <header class="parent-hero"><div><div class="eyebrow">Your explorer's support team</div><h1>Every step is progress.</h1><p class="sub">Follow ${esc(learner)}'s learning, celebrate growth, and plan what comes next.</p></div><div class="hero-tools"><span class="compass" aria-hidden="true">🧭</span><button class="btn sm gray" onclick="refreshData()">↻ Refresh data</button></div></header>
+    <div class="parent-layout"><nav class="tabs parent-nav" aria-label="Parent workspace"><div class="nav-label">Parent workspace</div>${tabs.map(([k,l],i)=>`<button class="${k===PARENT_TAB?'active':''}" aria-current="${k===PARENT_TAB?'page':'false'}" onclick="setParentTab('${k}')"><span class="nav-symbol" aria-hidden="true">${['◫','↗','▤','⚑'][i]}</span>${l}</button>`).join('')}</nav><div class="parent-workspace">
     ${subjBar}
-    <div id="parentBody"></div></div>`;
+    <div id="parentBody"></div></div></div></div>`;
   renderParentBody();
 }
 function setParentTab(t){ PARENT_TAB=t; renderParent(); }
@@ -702,9 +702,9 @@ function parentDashboard(){
     <div class="kpi"><b>${attempts.length}</b><span>Questions attempted</span></div>
     <div class="kpi"><b>${mastered}</b><span>Topics mastered</span></div>
     <div class="kpi"><b>${due.length}</b><span>Due for review</span></div></div>
-    <div class="card"><h3>${subjectEmoji(subject)} ${esc(subject)} — Mastery Map</h3>
+    <div class="card"><h3>${subjectEmoji(subject)} ${esc(subject)} learning overview</h3>
     <table><thead><tr><th>Topic</th><th class="num">Mastery</th><th class="num">Lv</th><th>Status</th><th>Next step</th></tr></thead><tbody>${map}</tbody></table></div>
-    ${recs?`<div class="card"><h3>Recommended next steps</h3>${recs}<div class="note" style="margin-top:6px">Decisions follow your README: <b>Promote</b> (ready for next level), <b>Reinforce</b> (target a weak skill), <b>Remediate</b> (step back and rebuild).</div></div>`:''}
+    ${recs?`<div class="card"><h3>Recommended next steps</h3>${recs}<div class="note" style="margin-top:6px">How to use these suggestions: <b>Promote</b> (ready for next level), <b>Reinforce</b> (target a weak skill), <b>Remediate</b> (step back and rebuild).</div></div>`:''}
     ${recentSessionsCard(sid,subject)}`;
 }
 function recentSessionsCard(sid,subject){ const ss=STATE.sessions.filter(s=>s.studentId===sid && s.subject===subject).slice(-8).reverse(); if(!ss.length) return '';
