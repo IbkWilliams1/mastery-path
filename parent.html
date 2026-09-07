@@ -159,11 +159,12 @@
     <div class="spacer"></div>
     <div id="topbarRight"></div>
   </header>
-  <a href="./" class="explorer-return">← Back to Math Explorer</a><main id="main"></main>
+  <a href="./" class="explorer-return">← Back to Math Explorer</a><div id="focusMusicHost"></div><main id="main"></main>
   <footer>MasteryPath · adaptive mastery across subjects · your data is private to your account</footer>
 </div>
 <div class="toast" id="toast"></div>
 
+<script type="module" src="./focus-music.js"></script>
 <script src="./mastery-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -500,6 +501,9 @@ function renderTopbar(){
 }
 
 function render(){
+  const musicHost=document.getElementById("focusMusicHost");
+  if(STATE.user && !musicHost.firstChild) musicHost.append(document.createElement("focus-music"));
+  if(!STATE.user) musicHost.replaceChildren();
   renderTopbar();
   if(!CONFIGURED){ renderConfigNeeded(); return; }
   if(!STATE.user){ renderAuth(); return; }
@@ -880,3 +884,4 @@ async function hardReset(){ if(!confirm('Erase ALL questions and progress for th
 </script>
 </body>
 </html>
+
