@@ -165,6 +165,7 @@
 <div class="toast" id="toast"></div>
 
 <script type="module" src="./focus-music.js"></script>
+<script src="./question-validation.js"></script>
 <script src="./mastery-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -767,16 +768,16 @@ function parentBank(){
     return `<div class="card"><div class="between"><h3 style="margin:0">${subjectEmoji(sub)} ${esc(sub)}</h3><span class="chip">${topics.length} topics</span></div>
       <table style="margin-top:6px"><thead><tr><th>Topic</th><th class="num">Questions</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }).join('') : `<div class="empty card">No questions yet.<div style="margin-top:10px"><button class="btn sm ghost" onclick="seedSample()">Load sample questions (3 subjects)</button></div></div>`;
-  return `${groups}
+  return `${groups}<details class="card"><summary>Question counts by topic, skill and level</summary>${coverageTable(bank())}</details>
   <div class="card"><h3>Import questions</h3>
     <p class="note">Paste CSV or JSON. Header: <code>subject,topic,skill,difficulty,question,option_a,option_b,option_c,option_d,answer,explanation</code>. The <b>subject</b> column decides which subject it lands in (e.g. Mathematics, English, Science). For tally marks, write <code>[TALLY:7]</code>; existing forms such as <code>||||/ ||</code> are also supported.</p>
-    <div class="field"><textarea id="importText" placeholder="Paste CSV or JSON here..."></textarea></div>
+    <div class="field"><textarea id="importText" oninput="clearImportPreview()" placeholder="Paste CSV or JSON here..."></textarea></div>
     <div class="btnrow"><button class="btn sm" onclick="validateImport()">Validate</button>
       <button class="btn sm gray" onclick="loadSampleImport()">Load a sample row</button>
       ${bank().length?'':'<button class="btn sm gray" onclick="seedSample()">Load sample questions</button>'}</div>
     <div id="importResult"></div></div>`;
 }
-function loadSampleImport(){ $('#importText').value=`subject,topic,skill,difficulty,question,option_a,option_b,option_c,option_d,answer,explanation
+function loadSampleImport(){ clearImportPreview(); $('#importText').value=`subject,topic,skill,difficulty,question,option_a,option_b,option_c,option_d,answer,explanation
 English,Grammar,Nouns,1,Which word is a noun?,quickly,dog,run,blue,B,A noun names a person place or thing.
 Mathematics,Fractions,Comparing fractions,2,Which is greater?,1/2,2/3,1/3,1/4,B,2/3 is greater than 1/2.`; }
 async function seedSample(){
@@ -785,45 +786,56 @@ async function seedSample(){
   if(error){ toast('Seed failed: '+error.message); return; }
   data.forEach(row=>STATE.questions.push(mapQuestion(row))); toast('Sample questions added'); renderParent();
 }
-function parseImport(text){ text=text.trim(); if(!text) return {rows:[],parseError:'Nothing to import.'};
-  if(text[0]==='['||text[0]==='{'){ try{ let d=JSON.parse(text); if(!Array.isArray(d)) d=[d]; return {rows:d.map(normalise)}; }catch(e){ return {rows:[],parseError:'Invalid JSON: '+e.message}; } }
-  const lines=text.split(/\r?\n/).filter(l=>l.trim()); const header=splitCSV(lines[0]).map(h=>h.trim().toLowerCase()); const rows=[];
-  for(let i=1;i<lines.length;i++){ const c=splitCSV(lines[i]); const o={}; header.forEach((h,idx)=>o[h]=(c[idx]??'').trim()); rows.push(normalise(o)); }
-  return {rows}; }
-function normalise(o){ const g=(...k)=>{ for(const x of k){ if(o[x]!==undefined&&o[x]!=='') return o[x]; } return ''; };
-  return { subject:g('subject')||'Mathematics', topic:g('topic'), skill:g('skill'), difficulty:parseInt(g('difficulty'),10),
-    question_text:g('question_text','question'), option_a:g('option_a'), option_b:g('option_b'), option_c:g('option_c'), option_d:g('option_d'),
-    correct_answer:(g('correct_answer','answer')||'').toUpperCase(), explanation:g('explanation') }; }
-function splitCSV(line){ const out=[]; let cur='',q=false;
-  for(let i=0;i<line.length;i++){ const c=line[i]; if(q){ if(c==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
-    else { if(c===','){out.push(cur);cur='';} else if(c==='"') q=true; else cur+=c; } } out.push(cur); return out; }
+function parseImport(text){ return QuestionValidation.parse(text); }
+function clearImportPreview(){ IMPORT_PREVIEW=null; $('#importResult').innerHTML='<p class="note">Text changed. Validate again before approving.</p>'; }
 function validateImport(){
-  const {rows,parseError}=parseImport($('#importText').value);
-  if(parseError){ $('#importResult').innerHTML=`<div class="errlist">${esc(parseError)}</div>`; IMPORT_PREVIEW=null; return; }
-  const valid=[],errors=[],seen=new Set(); const existing=new Set(bank().map(q=>(q.subject+'|'+q.topic+'|'+q.question_text).toLowerCase()));
-  rows.forEach((r,i)=>{ const p=[];
-    if(!r.subject)p.push('missing subject'); if(!r.topic)p.push('missing topic'); if(!r.skill)p.push('missing skill'); if(!r.question_text)p.push('missing question');
-    if(!(r.difficulty>=1&&r.difficulty<=5))p.push('invalid difficulty (need 1–5)');
-    ['option_a','option_b','option_c','option_d'].forEach(k=>{ if(!r[k])p.push('missing '+k); });
-    if(!['A','B','C','D'].includes(r.correct_answer))p.push('answer must be A–D');
-    const key=(r.subject+'|'+r.topic+'|'+r.question_text).toLowerCase(); if(existing.has(key)||seen.has(key))p.push('duplicate question'); seen.add(key);
-    if(p.length)errors.push({row:i+1,problems:p}); else valid.push(r); });
-  IMPORT_PREVIEW={valid,errors}; renderImportResult();
+  const source=$('#importText').value, parsed=parseImport(source);
+  if(parsed.parseError){IMPORT_PREVIEW=null;$('#importResult').innerHTML=`<div class="errlist">${esc(parsed.parseError)}</div>`;return;}
+  IMPORT_PREVIEW={source,rows:parsed.rows,entries:QuestionValidation.validate(parsed.rows,bank()),selected:new Set(),signature:''};
+  IMPORT_PREVIEW.signature=JSON.stringify(IMPORT_PREVIEW.entries);
+  renderImportResult();
 }
-function renderImportResult(){ const {valid,errors}=IMPORT_PREVIEW;
-  const pr=valid.slice(0,8).map(r=>`<tr><td>${esc(r.subject)}</td><td>${esc(r.topic)}</td><td>${esc(r.skill)}</td><td class="num">${r.difficulty}</td><td>${renderLearningText(r.question_text)}</td><td>${esc(r.correct_answer)}</td></tr>`).join('');
-  const eb=errors.length?`<div class="errlist"><b>${errors.length} row(s) rejected:</b><br>${errors.slice(0,8).map(e=>`Row ${e.row}: ${e.problems.join(', ')}`).join('<br>')}${errors.length>8?'<br>…':''}</div>`:'';
-  $('#importResult').innerHTML=`<div class="between" style="margin-top:12px"><span class="${valid.length?'valid-ok':'valid-bad'}">✓ ${valid.length} valid</span><span class="${errors.length?'valid-bad':'muted'}">✗ ${errors.length} with errors</span></div>
-    ${valid.length?`<table style="margin-top:8px"><thead><tr><th>Subject</th><th>Topic</th><th>Skill</th><th class="num">Diff</th><th>Question</th><th>Ans</th></tr></thead><tbody>${pr}</tbody></table>${valid.length>8?`<div class="note">…and ${valid.length-8} more</div>`:''}`:''}
-    ${eb}${valid.length?`<button class="btn" id="approveBtn" onclick="approveImport()">Approve &amp; add ${valid.length} question(s)</button>`:''}`;
+function coverageTable(rows){
+ const groups=QuestionValidation.coverage(rows);
+ return groups.length?`<div style="overflow-x:auto"><table><thead><tr><th>Subject</th><th>Topic</th><th>Skill</th><th>Level</th><th>Questions</th></tr></thead><tbody>${groups.map(g=>`<tr>${g.group.map(v=>`<td>${esc(v)}</td>`).join('')}<td>${g.count}</td></tr>`).join('')}</tbody></table></div>`:'<p class="note">No questions selected.</p>';
 }
+function selectImportRow(index,checked){if(!IMPORT_PREVIEW)return;const e=IMPORT_PREVIEW.entries[index];if(e.errors.length)return;if(checked)IMPORT_PREVIEW.selected.add(index);else IMPORT_PREVIEW.selected.delete(index);updateImportSelection();}
+function updateImportSelection(){
+ const p=IMPORT_PREVIEW,rows=[...p.selected].map(i=>p.entries[i].q);
+ $('#selectedCoverage').innerHTML=coverageTable(rows);
+ $('#approveBtn').disabled=!rows.length;
+ $('#approveBtn').textContent=`Approve & add ${rows.length} reviewed question(s)`;
+}
+function renderImportResult(){
+ const p=IMPORT_PREVIEW,blocked=p.entries.filter(e=>e.errors.length).length,warnings=p.entries.filter(e=>e.warnings.length).length;
+ $('#importResult').innerHTML=`<h3>Review ${p.entries.length} questions</h3><p>${blocked} blocked · ${warnings} with possible duplicate warnings</p>
+ <p class="note">Checks cover formatting, required fields, answer options and duplicate signals. Verify the maths, intended answer, explanation and difficulty yourself. Tick each question you want to approve. Blocked rows must be corrected in the pasted text and validated again.</p>
+ ${p.entries.map((e,i)=>`<article class="card" style="margin:12px 0;border:2px solid ${e.errors.length?'#b42318':e.warnings.length?'#ab7500':'#cbe3e5'}"><h4>Row ${e.row} · ${esc(e.q.subject)} · ${esc(e.q.topic)}</h4><p class="note">${esc(e.q.skill)} · Level ${esc(e.q.difficulty)}</p>
+ ${e.errors.length?`<ul class="errlist">${e.errors.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`:''}
+ ${e.warnings.length?`<p><b>${esc(e.warnings[0])}</b></p>${e.matches.map(m=>`<blockquote>${esc(m.where)}: ${renderLearningText(m.question)}</blockquote>`).join('')}`:''}
+ <p><b>${renderLearningText(e.q.question_text)}</b></p><ol type="A">${['a','b','c','d'].map(k=>`<li style="padding:6px">${renderLearningText(e.q['option_'+k])}${e.q.correct_answer===k.toUpperCase()?' <b>— Marked correct</b>':''}</li>`).join('')}</ol>
+ <p><b>Explanation:</b> ${renderLearningText(e.q.explanation)}</p>
+ ${e.errors.length?'':`<label><input type="checkbox" onchange="selectImportRow(${i},this.checked)"> I reviewed this question${e.warnings.length?' and the duplicate warning':''}. Include it.</label>`}</article>`).join('')}
+ <h4>Selected import counts by topic, skill and level</h4><div id="selectedCoverage"></div><button class="btn" id="approveBtn" onclick="approveImport()" disabled>Approve reviewed questions</button>`;
+ updateImportSelection();
+}
+let IMPORT_SAVING=false;
 async function approveImport(){
-  if(!IMPORT_PREVIEW||!IMPORT_PREVIEW.valid.length) return;
-  const btn=$('#approveBtn'); if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
-  const payload=IMPORT_PREVIEW.valid.map(r=>({owner:STATE.user.id,subject:r.subject,topic:r.topic,skill:r.skill,difficulty:r.difficulty,question_text:r.question_text,option_a:r.option_a,option_b:r.option_b,option_c:r.option_c,option_d:r.option_d,correct_answer:r.correct_answer,explanation:r.explanation,status:'approved'}));
-  const {data,error}=await SB.from('questions').insert(payload).select();
-  if(error){ toast('Import failed: '+error.message); if(btn){btn.disabled=false;btn.textContent='Approve & add';} return; }
-  data.forEach(row=>STATE.questions.push(mapQuestion(row))); IMPORT_PREVIEW=null; toast(data.length+' question(s) added'); renderParent();
+ if(IMPORT_SAVING||!IMPORT_PREVIEW||!IMPORT_PREVIEW.selected.size)return;
+ const p=IMPORT_PREVIEW;
+ if($('#importText').value!==p.source){clearImportPreview();return;}
+ const fresh=QuestionValidation.validate(p.rows,bank());
+ if(JSON.stringify(fresh)!==p.signature){validateImport();toast('The bank changed. Please review the updated checks.');return;}
+ const rows=[...p.selected].map(i=>p.entries[i]).filter(e=>!e.errors.length).map(e=>e.q);
+ if(!rows.length)return;
+ IMPORT_SAVING=true;const btn=$('#approveBtn');btn.disabled=true;btn.textContent='Saving…';
+ try{
+ const payload=rows.map(r=>({owner:STATE.user.id,...r,status:'approved'}));
+ const {data,error}=await SB.from('questions').insert(payload).select();
+ if(error)throw error;
+ data.forEach(row=>STATE.questions.push(mapQuestion(row)));IMPORT_PREVIEW=null;toast(data.length+' reviewed questions added');renderParent();
+ }catch(e){toast('Import failed: '+e.message);if(IMPORT_PREVIEW===p)updateImportSelection();}
+ finally{IMPORT_SAVING=false;}
 }
 async function deleteTopic(subject,name){
   if(!confirm(`Remove "${name}" (${subject}) from every device?\n\nIts questions and practice history will be deleted.`)) return;
